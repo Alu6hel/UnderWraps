@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build artifacts (keep dist)
+build/
+*.spec
+
+# Test data & logs
+underwraps_data/
+underwraps_test_data/
+underwraps_e2e_data/
+*.log
+*.wal
+*.db-journal
+
+# OS generated
+.DS_Store
+Thumbs.db

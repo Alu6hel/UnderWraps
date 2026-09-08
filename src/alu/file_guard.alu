@@ -1,0 +1,87 @@
+// ==============================================================================
+// UnderWraps Sovereign Messaging Ecosystem: Pure ALU File Guard Subsystem
+// Formally Verified 150MB Media Boundary & Stream Validator with Z3 SMT Invariants
+// 
+// Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu") <timesume9@gmail.com>
+// License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
+// ==============================================================================
+
+import std::memory
+import std::crypto
+import std::string
+
+// Strict 150MB file size ceiling: 150 * 1024 * 1024 = 157,286,400 bytes
+global MAX_ALLOWED_FILE_BYTES: u32 = 157286400
+global CHUNK_BUFFER_SIZE: u32 = 65536 // 64KB stream chunks
+
+struct MediaUploadHeader {
+    file_name: ptr<u8>
+    declared_size: u32
+    mime_type: ptr<u8>
+    blake3_hash: ptr<u8>
+    sender_id: ptr<u8>
+    is_voice_note: bool
+    audio_duration_ms: u32
+}
+
+struct StreamValidationState {
+    total_bytes_received: u32
+    is_aborted: bool
+    is_complete: bool
+    running_hash: ptr<u8>
+    error_code: u32
+}
+
+// ------------------------------------------------------------------------------
+// SMT-Verified Invariant: Declared file size MUST not exceed 150MB
+// ------------------------------------------------------------------------------
+@requires("header != null")
+@ensures("return == true ==> header.declared_size <= MAX_ALLOWED_FILE_BYTES")
+routine validate_media_header(header: ptr<MediaUploadHeader>) -> bool {
+    if (header.declared_size == 0) {
+        print("[FileGuard] Rejected: File size cannot be zero.")
+        return false
+    }
+    
+    if (header.declared_size > MAX_ALLOWED_FILE_BYTES) {
+        print("[FileGuard Security Violation] File size exceeds strict 150MB limit: ", header.declared_size)
+        return false
+    }
+    
+    return true
+}
+
+// ------------------------------------------------------------------------------
+// SMT-Verified Streaming Invariant: Running byte sum MUST stay within bounds
+// ------------------------------------------------------------------------------
+@requires("state != null")
+@ensures("return == true ==> state.total_bytes_received <= MAX_ALLOWED_FILE_BYTES")
+routine validate_stream_chunk(state: ptr<StreamValidationState>, chunk_size: u32) -> bool {
+    if (state.is_aborted) {
+        return false
+    }
+    
+    let new_total = state.total_bytes_received + chunk_size
+    if (new_total > MAX_ALLOWED_FILE_BYTES) {
+        print("[FileGuard Security Alarm] Stream exceeded 150MB ceiling! Terminating connection.")
+        state.is_aborted = true
+        state.error_code = 413 // Payload Too Large
+        return false
+    }
+    
+    state.total_bytes_received = new_total
+    return true
+}
+
+// ------------------------------------------------------------------------------
+// BLAKE3 / SHA-256 Checksum Verification
+// ------------------------------------------------------------------------------
+@requires("data != null && expected_hash != null")
+routine verify_file_integrity(data: ptr<u8>, length: u32, expected_hash: ptr<u8>) -> bool {
+    if (length > MAX_ALLOWED_FILE_BYTES) {
+        return false
+    }
+    
+    let calculated_hash = crypto::sha256_hex(data, length)
+    return string::equals(calculated_hash, expected_hash)
+}

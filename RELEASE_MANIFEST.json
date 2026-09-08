@@ -1,0 +1,34 @@
+{
+  "application": "UnderWraps",
+  "version": "2.0.0",
+  "build_date": "2026-09-07T18:32:00-07:00",
+  "architect": "David Anthony Jones ('Alu')",
+  "license": "Alumungandr Master Charter",
+  "modules": {
+    "server_gui": "UnderWrapsServer.exe",
+    "client_messenger": "UnderWraps.exe",
+    "database": "Kybalion Multi-Modal SMT Engine",
+    "systems_core": "Pure ALU (.alu)",
+    "file_guard": "Strict 150MB Ceiling (157,286,400 bytes)",
+    "audio_dsp": "48kHz Lossless Voice Calling & Waveform Visualizer",
+    "auth": "Custom Username/Password with Optional Email 2FA",
+    "live_themes": ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"]
+  },
+  "targets": [
+    {
+      "platform": "Windows 11 (x86_64)",
+      "binaries": ["UnderWrapsServer.exe", "UnderWraps.exe"],
+      "styling": "Fluent Dark (--noconsole)"
+    },
+    {
+      "platform": "Android (ARM64)",
+      "package": "com.alumungandr.underwraps",
+      "service": "24/7 ServerForegroundService"
+    },
+    {
+      "platform": "Web (PWA)",
+      "entry": "web/index.html",
+      "offline": "web/sw.js"
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+// ==============================================================================
+// Kybalion Query Language (KQL) Schema Definition for UnderWraps (v2.0)
+// Custom Username/Password, Optional 2FA, 150MB Media, Voice Notes & 48kHz Calls
+// 
+// Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
+// License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
+// ==============================================================================
+
+// 1. Users Table (Username + Password + Optional 2FA)
+CREATE TABLE users (
+    user_id VARCHAR(64) PRIMARY KEY,
+    username VARCHAR(64) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(256) NOT NULL,
+    password_salt VARCHAR(64) NOT NULL,
+    two_factor_enabled BOOLEAN DEFAULT FALSE,
+    two_factor_secret VARCHAR(64),
+    identity_key_pub VARCHAR(128) NOT NULL,
+    display_name VARCHAR(100),
+    avatar_url VARCHAR(255),
+    created_at BIGINT NOT NULL,
+    last_seen_at BIGINT NOT NULL,
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+// 2. Devices Table
+CREATE TABLE devices (
+    device_id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) REFERENCES users(user_id),
+    platform VARCHAR(32) NOT NULL,
+    push_token TEXT,
+    session_token VARCHAR(128) NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+// 3. Conversations Table
+CREATE TABLE conversations (
+    conversation_id VARCHAR(64) PRIMARY KEY,
+    type VARCHAR(20) NOT NULL, // 'DIRECT' or 'GROUP'
+    title VARCHAR(128),
+    created_by VARCHAR(64) REFERENCES users(user_id),
+    created_at BIGINT NOT NULL
+);
+
+// 4. Conversation Members Table
+CREATE TABLE conversation_members (
+    conversation_id VARCHAR(64) REFERENCES conversations(conversation_id),
+    user_id VARCHAR(64) REFERENCES users(user_id),
+    role VARCHAR(20) DEFAULT 'MEMBER',
+    joined_at BIGINT NOT NULL,
+    PRIMARY KEY (conversation_id, user_id)
+);
+
+// 5. Encrypted Messages & Voice Notes Table
+CREATE TABLE messages (
+    message_id VARCHAR(64) PRIMARY KEY,
+    conversation_id VARCHAR(64) REFERENCES conversations(conversation_id),
+    sender_id VARCHAR(64) REFERENCES users(user_id),
+    recipient_id VARCHAR(64),
+    message_type VARCHAR(20) DEFAULT 'TEXT', // 'TEXT', 'VOICE_NOTE', 'MEDIA', 'CALL_EVENT'
+    ciphertext TEXT NOT NULL,
+    nonce VARCHAR(64) NOT NULL,
+    message_sequence BIGINT NOT NULL,
+    attachment_id VARCHAR(64),
+    voice_duration_ms INT DEFAULT 0,
+    waveform_data TEXT, // JSON serialized waveform array for UI rendering
+    status VARCHAR(20) DEFAULT 'SENT',
+    created_at BIGINT NOT NULL
+);
+
+// 6. Strict 150MB Attachments Table
+CREATE TABLE attachments (
+    attachment_id VARCHAR(64) PRIMARY KEY,
+    message_id VARCHAR(64),
+    sender_id VARCHAR(64) REFERENCES users(user_id),
+    file_name VARCHAR(255) NOT NULL,
+    file_size_bytes INT NOT NULL, // Formally verified <= 157286400 (150MB)
+    mime_type VARCHAR(100) NOT NULL,
+    blake3_hash VARCHAR(64) NOT NULL,
+    storage_path TEXT NOT NULL,
+    is_voice_note BOOLEAN DEFAULT FALSE,
+    audio_duration_ms INT DEFAULT 0,
+    created_at BIGINT NOT NULL
+);
+
+// 7. Voice Call Signaling & Call History Table
+CREATE TABLE voice_calls (
+    call_id VARCHAR(64) PRIMARY KEY,
+    caller_id VARCHAR(64) REFERENCES users(user_id),
+    callee_id VARCHAR(64) REFERENCES users(user_id),
+    call_type VARCHAR(20) DEFAULT 'VOICE_1ON1',
+    status VARCHAR(20) NOT NULL, // 'RINGING', 'CONNECTED', 'ENDED', 'MISSED', 'DECLINED'
+    started_at BIGINT NOT NULL,
+    answered_at BIGINT,
+    ended_at BIGINT,
+    duration_seconds INT DEFAULT 0
+);
+
+// 8. Ephemeral 2FA OTP Authentication Tokens
+CREATE TABLE ephemeral_tokens (
+    token_id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) REFERENCES users(user_id),
+    email VARCHAR(255) NOT NULL,
+    token_type VARCHAR(32) NOT NULL, // '2FA_LOGIN', 'EMAIL_VERIFY', 'PASS_RESET'
+    otp_code VARCHAR(16) NOT NULL,
+    salt VARCHAR(32) NOT NULL,
+    expires_at BIGINT NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE
+);
+
+// 9. HNSW Neural Vector Index (128-D) for Semantic Message Retrieval
+CREATE VECTOR_INDEX message_vectors (
+    dimension: 128,
+    metric: 'COSINE',
+    hnsw_m: 16,
+    hnsw_ef: 200
+);

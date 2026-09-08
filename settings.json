@@ -1,0 +1,25 @@
+{
+  "app_name": "UnderWraps",
+  "version": "2.0.0",
+  "theme": "fluent_dark",
+  "server": {
+    "default_host": "127.0.0.1",
+    "http_port": 8080,
+    "ws_port": 8081,
+    "auto_start": true,
+    "enable_encryption_at_rest": true
+  },
+  "media": {
+    "max_file_size_mb": 150,
+    "max_file_size_bytes": 157286400,
+    "audio_sample_rate_hz": 48000,
+    "allow_voice_notes": true,
+    "allow_voice_calls": true
+  },
+  "security": {
+    "e2ee_enabled": true,
+    "password_hash_algorithm": "PBKDF2-SHA512",
+    "optional_2fa_enabled": false,
+    "session_timeout_days": 30
+  }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "UnderWraps"
+version = "2.0.0"
+authors = ["David Anthony Jones ('Alu') <timesume9@gmail.com>"]
+edition = "2026"
+license = "Alumungandr Master Charter"
+description = "Sovereign E2EE Messenger with Custom Username/Password, Optional 2FA, 150MB Media Guard, Voice Notes, and 48kHz Voice Calls powered by Kybalion DB."
+
+[dependencies]
+kybalion = { path = "../Kybalion" }
+
+[build]
+target = ["x86_64-windows-msvc", "aarch64-linux-android"]
+opt_level = 3
+smt_verify = true
+noconsole = true
+icon = "assets/icons/underwraps_512.ico"
+
+[media]
+max_allowed_file_bytes = 157286400 # Strict 150MB
+sample_rate_hz = 48000
