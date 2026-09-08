@@ -34,6 +34,7 @@ from src.database.kybalion_adapter import KybalionDBAdapter
 MAX_MEDIA_BYTES = 157286400  # Strict 150MB limit (150 * 1024 * 1024)
 DEFAULT_HTTP_PORT = 8080
 DEFAULT_WS_PORT = 8081
+DEFAULT_DISCOVERY_PORT = 8088
 
 class WebSocketFrame:
     """Zero-dependency pure Python WebSocket RFC 6455 Frame Parser & Encoder."""
@@ -107,16 +108,18 @@ class UnderWrapsServer:
     Coordinates REST APIs, WebSockets, Kybalion Storage, 150MB File Streaming, and Voice Calling.
     """
     def __init__(self, host: str = "0.0.0.0", http_port: int = DEFAULT_HTTP_PORT,
-                 ws_port: int = DEFAULT_WS_PORT, data_dir: str = "./underwraps_data"):
+                 ws_port: int = DEFAULT_WS_PORT, discovery_port: int = DEFAULT_DISCOVERY_PORT, data_dir: str = "./underwraps_data"):
         self.host = host
         self.http_port = http_port
         self.ws_port = ws_port
+        self.discovery_port = discovery_port
         self.data_dir = os.path.abspath(data_dir)
         self.db = KybalionDBAdapter(data_dir=self.data_dir)
         
         self.is_running = False
         self.httpd: Optional[HTTPServer] = None
         self.ws_server_sock: Optional[socket.socket] = None
+        self.udp_discovery_sock: Optional[socket.socket] = None
         
         # Connected WebSocket Clients: {socket: {"user_id": str, "username": str, "ip": str, "joined_at": int}}
         self.clients: Dict[socket.socket, Dict[str, Any]] = {}
@@ -132,6 +135,17 @@ class UnderWrapsServer:
         self.total_bytes_received = 0
         self.start_time = time.time()
         self.log_callbacks: List[Any] = []
+
+    def get_lan_ip(self) -> str:
+        """Determines the primary LAN IP address for zero-configuration discovery."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
 
     def log(self, message: str, level: str = "INFO"):
         timestamp = time.strftime("%H:%M:%S")
@@ -159,8 +173,12 @@ class UnderWrapsServer:
         # Start WebSocket Server in background thread
         self.ws_thread = threading.Thread(target=self._run_ws_server, daemon=True)
         self.ws_thread.start()
+
+        # Start Zero-Configuration UDP Auto-Discovery Beacon in background thread
+        self.udp_thread = threading.Thread(target=self._run_udp_discovery, daemon=True)
+        self.udp_thread.start()
         
-        self.log(f"UnderWraps Server Engine successfully started on {self.host} (HTTP: {self.http_port}, WS: {self.ws_port})", "SUCCESS")
+        self.log(f"UnderWraps Server Engine successfully started on {self.host} (HTTP: {self.http_port}, WS: {self.ws_port}, UDP Discovery: {self.discovery_port})", "SUCCESS")
         self.log(f"Kybalion DB Engine active at: {self.data_dir}", "INFO")
         self.log(f"Formally Verified 150MB File Guard: ACTIVE (Max {MAX_MEDIA_BYTES} bytes)", "INFO")
 
@@ -170,6 +188,13 @@ class UnderWrapsServer:
         self.log("Shutting down UnderWraps Server Engine...", "WARNING")
         self.is_running = False
         
+        # Close UDP Discovery Beacon
+        if self.udp_discovery_sock:
+            try:
+                self.udp_discovery_sock.close()
+            except Exception:
+                pass
+
         # Close HTTP server
         if self.httpd:
             try:
@@ -195,6 +220,66 @@ class UnderWrapsServer:
             self.user_to_sockets.clear()
             
         self.log("Server shutdown complete. State safely committed to Kybalion DB.", "SUCCESS")
+
+    def _run_udp_discovery(self):
+        """Zero-configuration UDP discovery beacon responder on port 8088."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.bind(("0.0.0.0", self.discovery_port))
+            sock.settimeout(1.0)
+            self.udp_discovery_sock = sock
+            self.log(f"Zero-Config UDP Auto-Discovery Beacon listening on port {self.discovery_port}", "INFO")
+        except Exception as e:
+            self.log(f"UDP Auto-Discovery Beacon unavailable: {e}", "WARNING")
+            return
+
+        lan_ip = self.get_lan_ip()
+        last_broadcast_time = 0.0
+
+        while self.is_running:
+            now = time.time()
+            # Periodic broadcast beacon every 3.0s
+            if now - last_broadcast_time > 3.0:
+                beacon_payload = json.dumps({
+                    "service": "UNDERWRAPS_SERVER",
+                    "http_url": f"http://{lan_ip}:{self.http_port}",
+                    "ws_url": f"ws://{lan_ip}:{self.ws_port}",
+                    "host": lan_ip,
+                    "http_port": self.http_port,
+                    "ws_port": self.ws_port,
+                    "server_name": "UnderWraps Sovereign Node",
+                    "version": "2.0.0-Hermetic"
+                }).encode("utf-8")
+                try:
+                    sock.sendto(beacon_payload, ("<broadcast>", self.discovery_port))
+                except Exception:
+                    pass
+                last_broadcast_time = now
+
+            # Listen for client discovery probes
+            try:
+                data, addr = sock.recvfrom(2048)
+                msg = data.decode("utf-8", errors="ignore").strip()
+                if "UNDERWRAPS_DISCOVER" in msg or msg.startswith("{"):
+                    ack_payload = json.dumps({
+                        "service": "UNDERWRAPS_SERVER",
+                        "status": "ONLINE",
+                        "http_url": f"http://{lan_ip}:{self.http_port}",
+                        "ws_url": f"ws://{lan_ip}:{self.ws_port}",
+                        "host": lan_ip,
+                        "http_port": self.http_port,
+                        "ws_port": self.ws_port,
+                        "server_name": "UnderWraps Sovereign Node",
+                        "version": "2.0.0-Hermetic"
+                    }).encode("utf-8")
+                    sock.sendto(ack_payload, addr)
+            except socket.timeout:
+                continue
+            except Exception:
+                if not self.is_running:
+                    break
 
     # --------------------------------------------------------------------------
     # HTTP REST Server
@@ -303,6 +388,39 @@ class UnderWrapsServer:
                         results = engine.db.semantic_search(user_id, q, conversation_id=conv_id, top_k=top_k)
                         return self.send_json(200, {"query": q, "results": results, "count": len(results)})
 
+                    # 9. Server Discovery Info (Zero-Config Probe)
+                    if path == "/api/v1/server/info":
+                        lan_ip = engine.get_lan_ip()
+                        return self.send_json(200, {
+                            "service": "UNDERWRAPS_SERVER",
+                            "status": "ONLINE",
+                            "http_url": f"http://{lan_ip}:{engine.http_port}",
+                            "ws_url": f"ws://{lan_ip}:{engine.ws_port}",
+                            "host": lan_ip,
+                            "http_port": engine.http_port,
+                            "ws_port": engine.ws_port,
+                            "server_name": "UnderWraps Sovereign Node",
+                            "version": "2.0.0-Hermetic"
+                        })
+
+                    # 10. Check Username Availability / Peer Info
+                    if path == "/api/v1/auth/check-username":
+                        username = query.get("username", [None])[0]
+                        if not username:
+                            return self.send_json(400, {"error": "Missing username parameter"})
+                        u = engine.db.get_user_by_username(username)
+                        if u:
+                            return self.send_json(200, {
+                                "exists": True,
+                                "username": u["username"],
+                                "display_name": u["display_name"],
+                                "user_id": u["user_id"],
+                                "identity_key_pub": u["identity_key_pub"],
+                                "two_factor_enabled": bool(u["two_factor_enabled"])
+                            })
+                        else:
+                            return self.send_json(200, {"exists": False})
+
                     self.send_json(404, {"error": "Endpoint not found", "path": path})
                 except Exception as e:
                     engine.log(f"HTTP GET Error ({path}): {str(e)}", "ERROR")
@@ -328,21 +446,47 @@ class UnderWrapsServer:
                     body = self.rfile.read(content_length) if content_length > 0 else b"{}"
                     data = json.loads(body.decode("utf-8")) if body else {}
 
-                    # 1. Signup (Username + Password + Email)
+                    # 1. Signup (Username + Password [Optional Email])
                     if path == "/api/v1/auth/signup":
                         username = data.get("username")
                         password = data.get("password")
                         email = data.get("email")
                         display_name = data.get("display_name")
                         
-                        if not username or not password or not email:
-                            return self.send_json(400, {"error": "Username, password, and email are required."})
+                        if not username or not password:
+                            return self.send_json(400, {"error": "Username and password are required."})
                             
-                        user = engine.db.register_user(username, email, password, display_name=display_name)
-                        engine.log(f"New user registered: @{username} ({email})", "SUCCESS")
-                        return self.send_json(201, {"success": True, "user": user})
+                        user = engine.db.register_user(username, email=email, password=password, display_name=display_name)
+                        engine.log(f"New user registered: @{username} ({user.get('email')})", "SUCCESS")
+                        return self.send_json(201, {
+                            "success": True,
+                            "user": user,
+                            "session_token": user.get("session_token"),
+                            "requires_2fa": False
+                        })
 
-                    # 2. Login (Username/Email + Password)
+                    # 2. Session Resume (Zero-Click Auto Login)
+                    if path == "/api/v1/auth/resume":
+                        token = data.get("session_token") or self.headers.get("X-Session-Token")
+                        auth_header = self.headers.get("Authorization", "")
+                        if not token and auth_header.startswith("Bearer "):
+                            token = auth_header[7:].strip()
+                        
+                        if not token:
+                            return self.send_json(400, {"error": "session_token is required."})
+                        
+                        user_data = engine.db.validate_session_token(token)
+                        if not user_data:
+                            return self.send_json(401, {"error": "Invalid or expired session token."})
+                        
+                        engine.log(f"Session resumed for user: @{user_data['username']}", "SUCCESS")
+                        return self.send_json(200, {
+                            "success": True,
+                            "user": user_data,
+                            "session_token": user_data["session_token"]
+                        })
+
+                    # 3. Login (Username/Email + Password)
                     if path == "/api/v1/auth/login":
                         identifier = data.get("identifier") or data.get("username") or data.get("email")
                         password = data.get("password")

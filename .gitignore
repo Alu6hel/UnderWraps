@@ -12,6 +12,8 @@ underwraps_data/
 underwraps_test_data/
 underwraps_e2e_data/
 underwraps_semantic_test_data/
+underwraps_autodisc_test_data/
+underwraps_*_data/
 *.log
 *.wal
 *.db-journal

@@ -6,14 +6,15 @@
  * License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
  */
 
-let API_BASE = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:8080';
+let API_BASE = localStorage.getItem('underwraps_server_http') || (window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:8080');
 let WS_URL = `ws://${window.location.hostname || '127.0.0.1'}:8081`;
 const MAX_FILE_BYTES = 157286400; // 150MB
 
 function syncServerURL() {
-    const input = document.getElementById('server-url-input') || document.getElementById('settings-server-url');
+    const input = document.getElementById('settings-server-url');
     if (input && input.value.trim()) {
         API_BASE = input.value.trim().replace(/\/$/, '');
+        localStorage.setItem('underwraps_server_http', API_BASE);
         try {
             const parsed = new URL(API_BASE);
             WS_URL = `ws://${parsed.hostname}:8081`;
@@ -53,7 +54,56 @@ function switchAuthTab(tab) {
     document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
 }
 
-// 2. Login Flow
+// 2. Session Resumption (Zero-Click Auto Login)
+async function checkCachedSession() {
+    try {
+        const raw = localStorage.getItem('underwraps_session');
+        if (!raw) return;
+        const cached = JSON.parse(raw);
+        if (cached && cached.username) {
+            const loginInput = document.getElementById('login-identifier');
+            if (loginInput) loginInput.value = cached.username;
+
+            const resumeBox = document.getElementById('quick-resume-box');
+            const resumeTitle = document.getElementById('quick-resume-title');
+            if (resumeBox && resumeTitle) {
+                resumeTitle.innerText = `Welcome back, @${cached.username}`;
+                resumeBox.classList.remove('hidden');
+            }
+
+            // Attempt silent auto-resume
+            await resumeCachedSession(true);
+        }
+    } catch (e) {
+        console.warn('Session check error:', e);
+    }
+}
+
+async function resumeCachedSession(silent = false) {
+    try {
+        const raw = localStorage.getItem('underwraps_session');
+        if (!raw) return;
+        const cached = JSON.parse(raw);
+        if (!cached.session_token) return;
+
+        const resp = await fetch(`${API_BASE}/api/v1/auth/resume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_token: cached.session_token })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success && data.user) {
+            localStorage.setItem('underwraps_session', JSON.stringify(data.user));
+            onAuthSuccess(data.user);
+        } else if (!silent) {
+            alert('Session expired. Please sign in again.');
+        }
+    } catch (err) {
+        if (!silent) alert('Could not connect to server: ' + err.message);
+    }
+}
+
+// 3. Login Flow
 async function handleLogin(e) {
     e.preventDefault();
     syncServerURL();
@@ -79,6 +129,7 @@ async function handleLogin(e) {
             }
             document.getElementById('modal-2fa').classList.remove('hidden');
         } else {
+            localStorage.setItem('underwraps_session', JSON.stringify(data));
             onAuthSuccess(data);
         }
     } catch (err) {
@@ -101,6 +152,7 @@ async function submit2FA() {
         if (!resp.ok) throw new Error(data.error || 'Invalid 2FA code');
 
         close2FAModal();
+        localStorage.setItem('underwraps_session', JSON.stringify(data));
         onAuthSuccess(data);
     } catch (err) {
         alert(err.message);
@@ -111,28 +163,42 @@ function close2FAModal() {
     document.getElementById('modal-2fa').classList.add('hidden');
 }
 
-// 3. Signup Flow
+// 4. Signup Flow (Username + Password Only)
 async function handleSignup(e) {
     e.preventDefault();
     syncServerURL();
     const user = document.getElementById('signup-username').value.trim();
-    const email = document.getElementById('signup-email').value.trim();
     const pwd = document.getElementById('signup-password').value.trim();
 
     try {
         const resp = await fetch(`${API_BASE}/api/v1/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, email: email, password: pwd, display_name: user })
+            body: JSON.stringify({ username: user, password: pwd, display_name: user })
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Signup failed');
 
-        alert(`Account @${user} created! Please sign in.`);
-        switchAuthTab('login');
+        // Instant seamless login on account creation
+        const userData = data.user || data;
+        localStorage.setItem('underwraps_session', JSON.stringify(userData));
+        onAuthSuccess(userData);
     } catch (err) {
         alert(err.message);
     }
+}
+
+function handleSignOut() {
+    localStorage.removeItem('underwraps_session');
+    currentUser = null;
+    if (ws) {
+        try { ws.close(); } catch(e){}
+        ws = null;
+    }
+    closeSettings();
+    document.getElementById('chat-screen').classList.add('hidden');
+    document.getElementById('auth-screen').classList.remove('hidden');
+    checkCachedSession();
 }
 
 function onAuthSuccess(user) {
@@ -1044,4 +1110,5 @@ function renderCyberAuroraMatrix(w, h, effAmp, speedMult) {
 // Initialize on DOM load
 window.addEventListener('DOMContentLoaded', () => {
     initLiveThemeEngine();
+    checkCachedSession();
 });

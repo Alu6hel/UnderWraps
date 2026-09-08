@@ -21,7 +21,7 @@ import urllib.parse
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple, Set
 
 # Import Sovereign ALU & Python Modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -101,6 +101,91 @@ TEXT_MUTED = THEMES["galaxy"]["text_muted"]
 
 MAX_FILE_BYTES = 157286400  # 150 MB
 
+# ------------------------------------------------------------------------------
+# Zero-Configuration Server Discovery & Persistent Session Management
+# ------------------------------------------------------------------------------
+SESSION_FILE_PATH = os.path.expanduser("~/.underwraps/session.json")
+
+def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", timeout: float = 0.8) -> Tuple[str, str, int]:
+    """
+    Zero-configuration auto-discovery:
+    1. Probes localhost:8080/api/v1/health (instant response).
+    2. Sends UDP broadcast probe to port 8088 across the local network.
+    3. Falls back to default host.
+    """
+    # 1. Probe localhost
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8080/api/v1/server/info")
+        with urllib.request.urlopen(req, timeout=0.3) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data.get("http_url", "http://127.0.0.1:8080"), data.get("host", "127.0.0.1"), int(data.get("ws_port", 8081))
+    except Exception:
+        pass
+
+    # 2. UDP Broadcast Probe on LAN (Port 8088)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.settimeout(timeout)
+        probe_msg = b"UNDERWRAPS_DISCOVER_PROBE"
+        sock.sendto(probe_msg, ("<broadcast>", 8088))
+        data, addr = sock.recvfrom(2048)
+        sock.close()
+        info = json.loads(data.decode("utf-8"))
+        http_url = info.get("http_url", f"http://{addr[0]}:8080")
+        ws_host = info.get("host", addr[0])
+        ws_port = int(info.get("ws_port", 8081))
+        return http_url, ws_host, ws_port
+    except Exception:
+        pass
+
+    # 3. Fallback
+    parsed = urllib.parse.urlparse(default_http)
+    host = parsed.hostname or "127.0.0.1"
+    return default_http, host, 8081
+
+def load_cached_session() -> Optional[Dict[str, Any]]:
+    """Loads active session credentials from local storage."""
+    try:
+        if os.path.exists(SESSION_FILE_PATH):
+            with open(SESSION_FILE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data.get("session_token"):
+                    return data
+    except Exception:
+        pass
+    return None
+
+def save_cached_session(auth_data: Dict[str, Any], server_http: str):
+    """Persists session credentials to local storage for zero-click auto login."""
+    try:
+        os.makedirs(os.path.dirname(SESSION_FILE_PATH), exist_ok=True)
+        to_save = {
+            "session_token": auth_data.get("session_token"),
+            "username": auth_data.get("username"),
+            "user_id": auth_data.get("user_id"),
+            "email": auth_data.get("email"),
+            "display_name": auth_data.get("display_name"),
+            "identity_key_pub": auth_data.get("identity_key_pub"),
+            "two_factor_enabled": auth_data.get("two_factor_enabled", False),
+            "server_http": server_http,
+            "saved_at": int(time.time())
+        }
+        with open(SESSION_FILE_PATH, "w", encoding="utf-8") as f:
+            json.dump(to_save, f, indent=2)
+    except Exception:
+        pass
+
+def clear_cached_session():
+    """Removes cached session credentials upon logout."""
+    try:
+        if os.path.exists(SESSION_FILE_PATH):
+            os.remove(SESSION_FILE_PATH)
+    except Exception:
+        pass
+
+
 class UnderWrapsClientGUI:
     def __init__(self, root: tk.Tk, server_http: str = "http://127.0.0.1:8080", server_ws_host: str = "127.0.0.1", server_ws_port: int = 8081):
         self.root = root
@@ -110,9 +195,22 @@ class UnderWrapsClientGUI:
         self.current_theme = "galaxy"
         self.root.configure(bg=BG_APP)
         
-        self.server_http = server_http
-        self.server_ws_host = server_ws_host
-        self.server_ws_port = server_ws_port
+        # Load cached session if available
+        self.cached_session = load_cached_session()
+        target_server = server_http
+        if self.cached_session and self.cached_session.get("server_http"):
+            target_server = self.cached_session.get("server_http")
+        
+        # Auto-discover UnderWraps server across LAN / localhost
+        try:
+            disc_http, disc_ws_host, disc_ws_port = discover_underwraps_server(default_http=target_server, timeout=0.6)
+            self.server_http = disc_http
+            self.server_ws_host = disc_ws_host
+            self.server_ws_port = disc_ws_port
+        except Exception:
+            self.server_http = target_server
+            self.server_ws_host = server_ws_host
+            self.server_ws_port = server_ws_port
         
         # Sound-Reactive & Halo Features
         self.sound_engine = SoundReactiveEngine(sensitivity=1.0, enabled=True)
@@ -138,7 +236,10 @@ class UnderWrapsClientGUI:
         self.record_start_time = 0.0
         
         self._setup_styles()
-        self._show_auth_screen()
+        
+        # Attempt seamless zero-click session resumption
+        if not self._try_auto_resume():
+            self._show_auth_screen()
         
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -148,6 +249,27 @@ class UnderWrapsClientGUI:
         style.configure("TNotebook", background=BG_APP, borderwidth=0)
         style.configure("TNotebook.Tab", background=BG_SIDEBAR, foreground=TEXT_MUTED, padding=[14, 6], font=("Segoe UI", 9, "bold"))
         style.map("TNotebook.Tab", background=[("selected", BG_CARD)], foreground=[("selected", ACCENT_BLUE)])
+
+    def _try_auto_resume(self) -> bool:
+        """Attempts zero-click session resumption using cached session token."""
+        if not self.cached_session or not self.cached_session.get("session_token"):
+            return False
+        
+        token = self.cached_session["session_token"]
+        try:
+            req = urllib.request.Request(
+                f"{self.server_http}/api/v1/auth/resume",
+                data=json.dumps({"session_token": token}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("success") and data.get("user"):
+                    self._on_auth_success(data["user"], save_session=True)
+                    return True
+        except Exception:
+            pass
+        return False
 
     # --------------------------------------------------------------------------
     # Cryptographic Peer Color Halo Avatar Widget
@@ -179,7 +301,7 @@ class UnderWrapsClientGUI:
         return cv
 
     # --------------------------------------------------------------------------
-    # Screen 1: Authentication (Signup / Login with Optional 2FA)
+    # Screen 1: Streamlined Authentication (Username + Password Only)
     # --------------------------------------------------------------------------
     def _show_auth_screen(self):
         for widget in self.root.winfo_children():
@@ -194,18 +316,24 @@ class UnderWrapsClientGUI:
         
         # Logo & Header
         tk.Label(card, text="🛡️ UNDERWRAPS", font=("Segoe UI", 20, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 4))
-        tk.Label(card, text="Sovereign E2EE • Custom Username • 150MB Media • 48kHz Voice", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(pady=(0, 20))
+        tk.Label(card, text="Sovereign E2EE • Custom Username • 150MB Media • 48kHz Voice", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(pady=(0, 16))
         
-        # Server Address Box
-        server_box = tk.Frame(card, bg=BG_SIDEBAR)
-        server_box.pack(fill=tk.X, pady=(0, 14))
-        
-        tk.Label(server_box, text="Server Address", font=("Segoe UI", 8, "bold"), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(anchor="w")
-        self.entry_server_url = tk.Entry(server_box, font=("Segoe UI", 9), bg=BG_INPUT, fg=ACCENT_BLUE, insertbackground=TEXT_WHITE, relief=tk.FLAT)
-        self.entry_server_url.insert(0, self.server_http)
-        self.entry_server_url.pack(fill=tk.X, ipady=2, pady=(2, 0))
+        # Auto-Discovery Status Badge (No manual IP needed)
+        disc_box = tk.Frame(card, bg=BG_INPUT, padx=10, pady=6, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        disc_box.pack(fill=tk.X, pady=(0, 16))
+        tk.Label(disc_box, text="⚡ Zero-Config Auto-Discovery Active", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN, bg=BG_INPUT).pack(side=tk.LEFT)
+        tk.Label(disc_box, text=f"• Connected to Server", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_INPUT).pack(side=tk.LEFT, padx=4)
 
-        # Tabs for Sign In vs Sign Up
+        # Quick Resume Banner if previous session exists
+        cached_user = self.cached_session.get("username") if self.cached_session else None
+        if cached_user:
+            quick_box = tk.Frame(card, bg="#122c30" if self.current_theme=="aurora" else "#1b2838", padx=12, pady=10, highlightthickness=1, highlightbackground=ACCENT_BLUE)
+            quick_box.pack(fill=tk.X, pady=(0, 16))
+            
+            tk.Label(quick_box, text=f"Welcome back, @{cached_user}", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=quick_box["bg"]).pack(anchor="w")
+            tk.Label(quick_box, text="Enter password to sign in, or switch tabs to create a new account.", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=quick_box["bg"]).pack(anchor="w", pady=(2, 6))
+
+        # Tabs for Sign In vs Create Account
         notebook = ttk.Notebook(card)
         notebook.pack(fill=tk.BOTH, expand=True)
         
@@ -213,50 +341,75 @@ class UnderWrapsClientGUI:
         tab_signin = tk.Frame(notebook, bg=BG_SIDEBAR, padx=10, pady=16)
         notebook.add(tab_signin, text="Sign In")
         
-        tk.Label(tab_signin, text="Username or Email", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
+        tk.Label(tab_signin, text="Username", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
         self.entry_login_id = tk.Entry(tab_signin, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, relief=tk.FLAT, width=32)
+        if cached_user:
+            self.entry_login_id.insert(0, cached_user)
         self.entry_login_id.pack(fill=tk.X, pady=(0, 14), ipady=4)
         
         tk.Label(tab_signin, text="Password", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
         self.entry_login_pwd = tk.Entry(tab_signin, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, show="•", relief=tk.FLAT, width=32)
         self.entry_login_pwd.pack(fill=tk.X, pady=(0, 20), ipady=4)
+        self.entry_login_pwd.bind("<Return>", lambda e: self._handle_login())
         
         btn_login = tk.Button(tab_signin, text="Sign In", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", activebackground="#388bfd", relief=tk.FLAT, pady=8, cursor="hand2", command=self._handle_login)
         btn_login.pack(fill=tk.X)
         
-        # Tab 2: Create Account
+        # Tab 2: Create Account (Username + Password Only)
         tab_signup = tk.Frame(notebook, bg=BG_SIDEBAR, padx=10, pady=16)
         notebook.add(tab_signup, text="Create Account")
         
-        tk.Label(tab_signup, text="Custom Username", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
+        tk.Label(tab_signup, text="Choose Custom Username", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
         self.entry_reg_user = tk.Entry(tab_signup, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, relief=tk.FLAT, width=32)
-        self.entry_reg_user.pack(fill=tk.X, pady=(0, 10), ipady=4)
+        self.entry_reg_user.pack(fill=tk.X, pady=(0, 12), ipady=4)
         
-        tk.Label(tab_signup, text="Email Address", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
-        self.entry_reg_email = tk.Entry(tab_signup, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, relief=tk.FLAT, width=32)
-        self.entry_reg_email.pack(fill=tk.X, pady=(0, 10), ipady=4)
-        
-        tk.Label(tab_signup, text="Password", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
+        tk.Label(tab_signup, text="Choose Password", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w", pady=(0, 4))
         self.entry_reg_pwd = tk.Entry(tab_signup, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, show="•", relief=tk.FLAT, width=32)
-        self.entry_reg_pwd.pack(fill=tk.X, pady=(0, 18), ipady=4)
+        self.entry_reg_pwd.pack(fill=tk.X, pady=(0, 20), ipady=4)
+        self.entry_reg_pwd.bind("<Return>", lambda e: self._handle_signup())
         
         btn_signup = tk.Button(tab_signup, text="Create Sovereign Account", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", activebackground="#238636", relief=tk.FLAT, pady=8, cursor="hand2", command=self._handle_signup)
         btn_signup.pack(fill=tk.X)
 
-    def _sync_server_url(self):
-        url = self.entry_server_url.get().strip().rstrip("/")
-        if url:
-            self.server_http = url
-            parsed = urllib.parse.urlparse(url)
-            self.server_ws_host = parsed.hostname or "127.0.0.1"
-            self.server_ws_port = 8081
+        # Footer Server Options
+        footer_frame = tk.Frame(card, bg=BG_SIDEBAR)
+        footer_frame.pack(fill=tk.X, pady=(16, 0))
+        btn_adv = tk.Button(footer_frame, text="⚙️ Connection Settings", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR, relief=tk.FLAT, cursor="hand2", command=self._prompt_manual_server_dialog)
+        btn_adv.pack(side=tk.RIGHT)
+
+    def _prompt_manual_server_dialog(self):
+        """Optional dialog for manual server configuration if ever needed."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Server Connection Settings")
+        dialog.geometry("420x220")
+        dialog.configure(bg=BG_SIDEBAR)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        tk.Label(dialog, text="🌐 Server Connection", font=("Segoe UI", 12, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(16, 4))
+        tk.Label(dialog, text="UnderWraps auto-discovers local and network servers automatically.\nYou can also specify a custom server address below.", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR, justify=tk.CENTER).pack(pady=(0, 12))
+
+        entry_srv = tk.Entry(dialog, font=("Segoe UI", 10), bg=BG_INPUT, fg=ACCENT_BLUE, insertbackground=TEXT_WHITE, relief=tk.FLAT, width=36)
+        entry_srv.insert(0, self.server_http)
+        entry_srv.pack(pady=(0, 16), ipady=4)
+
+        def save_and_reconnect():
+            url = entry_srv.get().strip().rstrip("/")
+            if url:
+                self.server_http = url
+                parsed = urllib.parse.urlparse(url)
+                self.server_ws_host = parsed.hostname or "127.0.0.1"
+                self.server_ws_port = 8081
+            dialog.destroy()
+            self._show_auth_screen()
+
+        tk.Button(dialog, text="Save & Connect", font=("Segoe UI", 9, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=save_and_reconnect).pack()
 
     def _handle_login(self):
-        self._sync_server_url()
         identifier = self.entry_login_id.get().strip()
         pwd = self.entry_login_pwd.get().strip()
         if not identifier or not pwd:
-            messagebox.showwarning("Incomplete Fields", "Please enter your username/email and password.")
+            messagebox.showwarning("Incomplete Fields", "Please enter your username and password.")
             return
             
         try:
@@ -271,7 +424,7 @@ class UnderWrapsClientGUI:
             if data.get("requires_2fa"):
                 self._prompt_2fa_modal(data["token_id"], data.get("email_masked", "your email"), data.get("otp_code_dev"))
             else:
-                self._on_auth_success(data)
+                self._on_auth_success(data, save_session=True)
         except urllib.error.HTTPError as e:
             err_body = json.loads(e.read().decode("utf-8"))
             messagebox.showerror("Login Failed", err_body.get("error", "Authentication error"))
@@ -310,42 +463,59 @@ class UnderWrapsClientGUI:
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     res_data = json.loads(resp.read().decode("utf-8"))
                 dialog.destroy()
-                self._on_auth_success(res_data)
+                self._on_auth_success(res_data, save_session=True)
             except Exception as ex:
                 messagebox.showerror("2FA Error", str(ex))
                 
         tk.Button(dialog, text="Verify & Login", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", relief=tk.FLAT, padx=16, pady=6, cursor="hand2", command=submit_2fa).pack(fill=tk.X, padx=40)
 
     def _handle_signup(self):
-        self._sync_server_url()
         user = self.entry_reg_user.get().strip()
-        email = self.entry_reg_email.get().strip()
         pwd = self.entry_reg_pwd.get().strip()
-        if not user or not email or not pwd:
-            messagebox.showwarning("Incomplete Fields", "Please complete all registration fields.")
+        if not user or not pwd:
+            messagebox.showwarning("Incomplete Fields", "Please enter a username and password.")
             return
             
         try:
             req = urllib.request.Request(
                 f"{self.server_http}/api/v1/auth/signup",
-                data=json.dumps({"username": user, "email": email, "password": pwd, "display_name": user}).encode("utf-8"),
+                data=json.dumps({"username": user, "password": pwd, "display_name": user}).encode("utf-8"),
                 headers={"Content-Type": "application/json"}
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            messagebox.showinfo("Registration Successful", f"Account @{user} created! You can now sign in.")
+            
+            # Instant seamless login on account creation
+            user_data = data.get("user", {})
+            self._on_auth_success(user_data, save_session=True)
         except urllib.error.HTTPError as e:
             err_body = json.loads(e.read().decode("utf-8"))
             messagebox.showerror("Signup Failed", err_body.get("error", "Registration error"))
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    def _on_auth_success(self, auth_data: Dict[str, Any]):
+    def _on_auth_success(self, auth_data: Dict[str, Any], save_session: bool = True):
         self.current_user = auth_data
-        self.session_token = auth_data["session_token"]
+        self.session_token = auth_data.get("session_token")
+        if save_session and self.session_token:
+            save_cached_session(auth_data, self.server_http)
+            self.cached_session = auth_data
         self._build_main_messenger_ui()
         self._connect_websocket()
         self._load_conversations()
+
+    def _sign_out(self):
+        """Signs out user, clears session cache, and returns to authentication screen."""
+        clear_cached_session()
+        self.cached_session = None
+        self.current_user = None
+        self.session_token = None
+        self.ws_connected = False
+        if self.ws_sock:
+            try: self.ws_sock.close()
+            except Exception: pass
+            self.ws_sock = None
+        self._show_auth_screen()
 
     # --------------------------------------------------------------------------
     # Screen 2: Main Messaging Interface (Responsive & Halo-Integrated)
@@ -649,9 +819,12 @@ class UnderWrapsClientGUI:
             except Exception as ex:
                 lbl_ping.config(text=f"✕ Unreachable: {str(ex)}", fg=ACCENT_RED)
                 
-        tk.Button(tab_server, text="Ping Server Latency", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, relief=tk.FLAT, padx=12, pady=4, cursor="hand2", command=ping_server).pack(anchor="w")
+        # Bottom Actions
+        def handle_modal_signout():
+            modal.destroy()
+            self._sign_out()
 
-        # Bottom Action
+        tk.Button(modal, text="🚪 Sign Out", font=("Segoe UI", 9, "bold"), bg=ACCENT_RED, fg="#ffffff", relief=tk.FLAT, padx=14, pady=5, cursor="hand2", command=handle_modal_signout).pack(side=tk.LEFT, padx=18, pady=(0, 14))
         tk.Button(modal, text="Close", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=TEXT_WHITE, relief=tk.FLAT, padx=16, pady=5, cursor="hand2", command=modal.destroy).pack(side=tk.RIGHT, padx=18, pady=(0, 14))
 
     def _apply_theme(self, theme_key: str):

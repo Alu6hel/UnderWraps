@@ -227,11 +227,11 @@ class KybalionDBAdapter:
     # --------------------------------------------------------------------------
     # User Registration & Authentication (Username + Password + Optional 2FA)
     # --------------------------------------------------------------------------
-    def register_user(self, username: str, email: str, password: str,
+    def register_user(self, username: str, email: Optional[str] = None, password: str = "",
                       identity_key_pub: Optional[str] = None, display_name: Optional[str] = None) -> Dict[str, Any]:
         self.total_writes += 1
         username_clean = username.strip().lower()
-        email_clean = email.strip().lower()
+        email_clean = email.strip().lower() if email and email.strip() else f"{username_clean}@sovereign.local"
         display_name = display_name or username.strip()
         user_id = "usr_" + hashlib.sha256(f"{username_clean}:{email_clean}:{time.time()}".encode()).hexdigest()[:16]
         
@@ -239,6 +239,9 @@ class KybalionDBAdapter:
         pwd_hash = self._hash_password(password, salt)
         identity_key = identity_key_pub or ("pk_" + secrets.token_hex(32))
         now = int(time.time() * 1000)
+        expires_at = now + (30 * 24 * 3600 * 1000)
+        session_token = "sess_" + secrets.token_hex(32)
+        device_id = "dev_" + secrets.token_hex(16)
         
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -249,12 +252,18 @@ class KybalionDBAdapter:
                 raise ValueError(f"Username '{username}' is already taken.")
             cursor.execute("SELECT user_id FROM users WHERE email = ?", (email_clean,))
             if cursor.fetchone():
-                raise ValueError(f"Email '{email}' is already registered.")
+                raise ValueError(f"Email '{email_clean}' is already registered.")
             
             cursor.execute("""
             INSERT INTO users (user_id, username, email, password_hash, password_salt, two_factor_enabled, two_factor_secret, identity_key_pub, display_name, created_at, last_seen_at, status)
             VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, 'ACTIVE')
             """, (user_id, username_clean, email_clean, pwd_hash, salt, identity_key, display_name, now, now))
+
+            cursor.execute("""
+            INSERT INTO devices (device_id, user_id, platform, session_token, created_at, expires_at)
+            VALUES (?, ?, 'desktop', ?, ?, ?)
+            """, (device_id, user_id, session_token, now, expires_at))
+            
             conn.commit()
             
             return {
@@ -264,8 +273,50 @@ class KybalionDBAdapter:
                 "display_name": display_name,
                 "two_factor_enabled": False,
                 "identity_key_pub": identity_key,
+                "session_token": session_token,
                 "created_at": now
             }
+
+    def validate_session_token(self, session_token: str) -> Optional[Dict[str, Any]]:
+        """Validates a cached session token and returns user profile if active & valid."""
+        self.total_reads += 1
+        now_ms = int(time.time() * 1000)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT d.user_id, d.session_token, d.expires_at,
+                   u.username, u.email, u.display_name, u.identity_key_pub, u.two_factor_enabled, u.status
+            FROM devices d
+            JOIN users u ON d.user_id = u.user_id
+            WHERE d.session_token = ? AND d.expires_at >= ?
+            """, (session_token, now_ms))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            user_data = dict(row)
+            cursor.execute("UPDATE users SET last_seen_at = ? WHERE user_id = ?", (now_ms, user_data["user_id"]))
+            conn.commit()
+            
+            return {
+                "user_id": user_data["user_id"],
+                "username": user_data["username"],
+                "email": user_data["email"],
+                "display_name": user_data["display_name"],
+                "identity_key_pub": user_data["identity_key_pub"],
+                "session_token": user_data["session_token"],
+                "two_factor_enabled": bool(user_data["two_factor_enabled"])
+            }
+
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Finds user by username."""
+        self.total_reads += 1
+        clean_user = username.strip().lower()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, email, display_name, two_factor_enabled, identity_key_pub, last_seen_at, status FROM users WHERE username = ?", (clean_user,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
     def authenticate_user(self, identifier: str, password: str) -> Dict[str, Any]:
         """

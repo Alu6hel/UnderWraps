@@ -1,7 +1,7 @@
 {
   "application": "UnderWraps",
-  "version": "2.1.0",
-  "build_date": "2026-09-07T20:00:00-07:00",
+  "version": "2.2.0",
+  "build_date": "2026-09-07T20:35:00-07:00",
   "architect": "David Anthony Jones ('Alu')",
   "license": "Alumungandr Master Charter",
   "modules": {
@@ -9,9 +9,10 @@
     "client_messenger": "UnderWraps.exe",
     "database": "Kybalion Multi-Modal SMT Engine",
     "systems_core": "Pure ALU (.alu)",
+    "auto_discovery": "Zero-Config UDP Broadcast Beacon (Port 8088) & Seamless Auto-Connect",
+    "auth": "Minimalist Username & Password Only, 1-Click/Zero-Click Session Resumption & Optional 2FA",
     "file_guard": "Strict 150MB Ceiling (157,286,400 bytes)",
     "audio_dsp": "48kHz Lossless Voice Calling & Waveform Visualizer",
-    "auth": "Custom Username/Password with Optional Email 2FA",
     "live_themes": ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"],
     "sound_reactive_shaders": "Real-time 48kHz Voice Audio Frequency Modulation for Dynamic Themes",
     "crypto_peer_halo": "SMT-Verified Deterministic Ambient Gradient Glows from Public Key Fingerprints",

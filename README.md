@@ -2,12 +2,14 @@
   <img src="assets/logo/underwraps_logo.svg" alt="UnderWraps Sovereign Logo" width="128" height="128">
 </p>
 
-# 🛡️ UnderWraps — Sovereign Private Messenger & Server Node (v2.1)
+# 🛡️ UnderWraps — Sovereign Private Messenger & Server Node (v2.2)
 
-**The Ultimate Sovereign Communication Suite powered by Pure ALU, Kybalion DB, Sound-Reactive Shaders & Cryptographic Halos**
+**The Ultimate Sovereign Communication Suite powered by Pure ALU, Kybalion DB, Zero-Config Discovery, Sound-Reactive Shaders & Cryptographic Halos**
 
 [![Pure ALU](https://img.shields.io/badge/Language-Pure_ALU-blue.svg)](https://github.com/Alu6hel/alu-language)
 [![Database](https://img.shields.io/badge/Database-Kybalion_DB-purple.svg)](https://github.com/Alu6hel/Kybalion)
+[![Auto Discovery](https://img.shields.io/badge/Discovery-Zero--Config_UDP_Beacon-brightgreen.svg)](#-zero-configuration-server-auto-discovery)
+[![Auth](https://img.shields.io/badge/Auth-Username_%26_Password_Only-blue.svg)](#-minimalist-signup--zero-click-session-resumption)
 [![Media Guard](https://img.shields.io/badge/Strict_Limit-150_MB-brightgreen.svg)](src/alu/file_guard.alu)
 [![Neural Search](https://img.shields.io/badge/Neural_Search-100%25_On--Device_128--D-violet.svg)](#-100-on-device-neural-semantic-search)
 [![Sound Reactive](https://img.shields.io/badge/Themes-Sound--Reactive_Shaders-orange.svg)](#-sound-reactive-live-themes)
@@ -18,9 +20,26 @@
 
 ## 🌟 Overview
 
-**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring custom username & password registration, optional email 2FA, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, a strictly enforced **150 MB** media attachment ceiling, **100% On-Device Neural Semantic Search** powered by the **Kybalion 128-D Vector Engine**, **Sound-Reactive Live Shaders**, and **Cryptographic Peer Color Halos**.
+**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring **Zero-Configuration Server Auto-Discovery**, **Minimalist Username & Password Registration (no email required)**, **Zero-Click / 1-Click Session Resumption**, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, a strictly enforced **150 MB** media attachment ceiling, **100% On-Device Neural Semantic Search** powered by the **Kybalion 128-D Vector Engine**, **Sound-Reactive Live Shaders**, and **Cryptographic Peer Color Halos**.
 
-The server operates as **both an installable application with a visual control dashboard on Windows & Android** and a background daemon powered by the **Kybalion Multi-Modal Database Engine**.
+Users never have to manually type an IP address or domain (`http://your-server-ip:8080`). When opened on any device (Desktop, Web PWA, Android), the app automatically locates and connects to the sovereign server in milliseconds.
+
+---
+
+## ⚡ Zero-Configuration Server Auto-Discovery
+
+- **UDP Broadcast Beacon (Port 8088)**: The server continuously announces its presence across the local network via periodic beacons and instant probe ACKs.
+- **Instant LAN & Localhost Probing**: Clients detect active servers across loopback, LAN subnets, and WiFi gateways within milliseconds.
+- **Zero Manual Configuration**: Users never have to ask for or type an IP address or domain. It connects automatically right out of the box.
+
+---
+
+## 👤 Minimalist Signup & Zero-Click Session Resumption
+
+- **Username & Password Only**: Create an account in seconds with only a username and password. No email address is required.
+- **Instant Login on Signup**: Creating an account automatically logs the user in with a secure session token.
+- **Zero-Click Future Sign-In**: When opening the app in the future, cached session credentials in `~/.underwraps/session.json` or `localStorage` are automatically verified via `/api/v1/auth/resume`—taking the user directly to their chats.
+- **Optional Email 2FA**: If high security is desired, users can enable 2FA anytime in Settings.
 
 ---
 
@@ -148,7 +167,8 @@ UnderWraps/
 │   ├── server_app/             # 24/7 Foreground Server Service
 │   ├── client_app/             # Android Messaging App & Permissions Manifest
 │   └── jni_bridge.cpp          # NDK JNI Bridge to Pure ALU Core
-└── tests/                      # Automated Verification Suite (27 Tests)
+└── tests/                      # Automated Verification Suite (32 Tests)
+    ├── test_auto_discovery_and_auth_resume.py # UDP Beacon & Session Resume
     ├── test_sound_reactive_themes.py # Sound-Reactive Audio DSP & SMT Bounds
     ├── test_crypto_peer_halo.py     # Halo Determinism & Contrast Invariants
     ├── test_settings_and_permissions.py # Settings & Permissions Verification
