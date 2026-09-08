@@ -1,40 +1,39 @@
-{
-  "application": "UnderWraps",
-  "version": "2.2.0",
-  "build_date": "2026-09-07T20:35:00-07:00",
-  "architect": "David Anthony Jones ('Alu')",
-  "license": "Alumungandr Master Charter",
-  "modules": {
-    "server_gui": "UnderWrapsServer.exe",
-    "client_messenger": "UnderWraps.exe",
-    "database": "Kybalion Multi-Modal SMT Engine",
-    "systems_core": "Pure ALU (.alu)",
-    "auto_discovery": "Zero-Config UDP Broadcast Beacon (Port 8088) & Seamless Auto-Connect",
-    "auth": "Minimalist Username & Password Only, 1-Click/Zero-Click Session Resumption & Optional 2FA",
-    "file_guard": "Strict 150MB Ceiling (157,286,400 bytes)",
-    "audio_dsp": "48kHz Lossless Voice Calling & Waveform Visualizer",
-    "live_themes": ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"],
-    "sound_reactive_shaders": "Real-time 48kHz Voice Audio Frequency Modulation for Dynamic Themes",
-    "crypto_peer_halo": "SMT-Verified Deterministic Ambient Gradient Glows from Public Key Fingerprints",
-    "neural_search": "100% On-Device 128-D Kybalion Vector Index (Zero-Knowledge Natural Language)"
-  },
-  "targets": [
+﻿{
+  "product_name": "UnderWraps Sovereign Messenger",
+  "version": "1.0.0",
+  "release_type": "Production Standalone Client & Android Package",
+  "author": "David Anthony Jones (Alu)",
+  "copyright": "Copyright © 2026 Alumungandr. All Rights Reserved.",
+  "packages": [
     {
-      "platform": "Windows 11 (x86_64)",
-      "binaries": ["UnderWrapsServer.exe", "UnderWraps.exe"],
-      "styling": "Fluent Dark (--noconsole)"
+      "platform": "Windows 10 / 11 (x86_64)",
+      "target": "Desktop Client GUI Application",
+      "executable": "UnderWraps.exe",
+      "path": "dist/UnderWraps.exe",
+      "sha256": "5A8EC67F2BAD9F8F1D44A2AE424A135818B5CBB76905B1E4AE82FA57778DBE5B",
+      "size_bytes": 12854075
     },
     {
-      "platform": "Android (ARM64)",
-      "package": "com.alumungandr.underwraps",
-      "service": "24/7 ServerForegroundService",
-      "permissions": ["RECORD_AUDIO", "POST_NOTIFICATIONS", "FOREGROUND_SERVICE_MICROPHONE", "READ_MEDIA_*"]
-    },
-    {
-      "platform": "Web (PWA)",
-      "entry": "web/index.html",
-      "offline": "web/sw.js",
-      "responsive": true
+      "platform": "Android 7.0+ (API 24 to 36)",
+      "target": "Android Mobile APK Package",
+      "executable": "UnderWraps.apk",
+      "path": "dist/UnderWraps.apk",
+      "sha256": "69497A9A76F9C64E74542FAE45D9A9A45A5CC95A8556CE900A1A5F1ADCD814A7",
+      "size_bytes": 11982629
     }
+  ],
+  "server_repository": "https://github.com/Alu6hel/UnderWrapsServer.git",
+  "client_repository": "https://github.com/Alu6hel/UnderWraps.git",
+  "features": [
+    "Zero-Configuration UDP Auto-Discovery (Port 8088)",
+    "Minimalist Username + Password Authentication",
+    "Instant 1-Click / Zero-Click Auto-Resume",
+    "End-to-End Encryption (AES-256-GCM / Kybalion KQL)",
+    "3 Live Interactive Shaders (Dark Galaxy, Inverted Stars, Cyber Aurora)",
+    "Live Sound-Reactive Audio DSP (Starfield / Aurora Amplitude Modulations)",
+    "Cryptographic Peer Color Halo (Deterministic Public Key Fingerprinting)",
+    "100% On-Device Neural Semantic Search (128-D Vector Cosine Matching)",
+    "150MB Media Quota Ceiling per User",
+    "48kHz Hi-Fi Voice Calling & Crystal Voice Notes"
   ]
 }

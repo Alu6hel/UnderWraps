@@ -1289,27 +1289,54 @@ class UnderWrapsClientGUI:
                 users = json.loads(resp.read().decode("utf-8")).get("users", [])
                 
             other_users = [u for u in users if u["user_id"] != self.current_user["user_id"]]
-            if not other_users:
-                messagebox.showinfo("No Users Found", "No other registered users found on the server.")
-                return
-                
+            
             dialog = tk.Toplevel(self.root)
             dialog.title("Start Direct Conversation")
-            dialog.geometry("380x320")
+            dialog.geometry("400x380")
             dialog.configure(bg=BG_SIDEBAR)
+            dialog.transient(self.root)
+            dialog.grab_set()
             
-            tk.Label(dialog, text="Select a user to message:", font=("Segoe UI", 11, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(16, 8), padx=16, anchor="w")
+            tk.Label(dialog, text="➕ Start Direct Message", font=("Segoe UI", 12, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(16, 4), padx=16, anchor="w")
+            tk.Label(dialog, text="Select a user or search by @username:", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(padx=16, anchor="w", pady=(0, 8))
+            
+            entry_search = tk.Entry(dialog, font=("Segoe UI", 10), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, relief=tk.FLAT)
+            entry_search.pack(fill=tk.X, padx=16, pady=(0, 8), ipady=3)
+            entry_search.focus()
             
             listbox = tk.Listbox(dialog, bg=BG_INPUT, fg=TEXT_WHITE, font=("Segoe UI", 10), selectbackground=ACCENT_BLUE, relief=tk.FLAT)
             listbox.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 12))
             
-            for u in other_users:
-                listbox.insert(tk.END, f"@{u['username']} ({u['email']})")
+            displayed_users = list(other_users)
+            
+            def refresh_list():
+                listbox.delete(0, tk.END)
+                q = entry_search.get().strip().lower().replace("@", "")
+                displayed_users.clear()
+                for u in other_users:
+                    if not q or q in u["username"].lower() or q in u.get("display_name", "").lower():
+                        displayed_users.append(u)
+                        status_str = "● Online" if u.get("is_online") else "Offline"
+                        listbox.insert(tk.END, f"@{u['username']} ({status_str})")
+            
+            refresh_list()
+            entry_search.bind("<KeyRelease>", lambda e: refresh_list())
                 
             def start_dm():
+                target_user = None
                 sel = listbox.curselection()
-                if not sel: return
-                target_user = other_users[sel[0]]
+                if sel:
+                    target_user = displayed_users[sel[0]]
+                else:
+                    raw_name = entry_search.get().strip().lower().replace("@", "")
+                    if raw_name:
+                        for u in other_users:
+                            if u["username"].lower() == raw_name:
+                                target_user = u
+                                break
+                if not target_user:
+                    messagebox.showwarning("Select User", "Please select or enter a registered username.")
+                    return
                 dialog.destroy()
                 
                 req_dm = urllib.request.Request(
@@ -1321,7 +1348,13 @@ class UnderWrapsClientGUI:
                     res = json.loads(r.read().decode("utf-8"))
                     
                 self._load_conversations()
+                self._select_conversation({
+                    "conversation_id": res["conversation_id"],
+                    "peer_id": target_user["user_id"],
+                    "peer_username": target_user["username"]
+                })
                 
+            entry_search.bind("<Return>", lambda e: start_dm())
             tk.Button(dialog, text="Start Chat", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=start_dm).pack(fill=tk.X, padx=16, pady=(0, 14))
         except Exception as ex:
             messagebox.showerror("Error", str(ex))
