@@ -92,8 +92,9 @@
                     <button class="icon-btn" title="Settings" onclick="openSettings()">⚙️</button>
                 </div>
 
-                <div class="sidebar-actions">
-                    <button class="btn-new-chat" onclick="openNewChatModal()">➕ New Direct Message</button>
+                <div class="sidebar-actions" style="display: flex; gap: 8px; padding: 10px 12px;">
+                    <button class="btn-new-chat" style="margin: 0; flex: 1;" onclick="openNewChatModal()">➕ New DM</button>
+                    <button class="btn-new-chat" style="margin: 0; flex: 1; background-color: #1a2736;" onclick="openNeuralSearchModal()">🧠 Neural Search</button>
                 </div>
 
                 <div id="conversation-list" class="conversation-list">
@@ -108,7 +109,8 @@
                         <h2 id="chat-peer-name">Select a conversation</h2>
                         <span id="chat-peer-status" class="peer-status"></span>
                     </div>
-                    <div class="chat-header-actions">
+                    <div class="chat-header-actions" style="display: flex; gap: 8px;">
+                        <button class="icon-btn" title="Search Chat" onclick="openNeuralSearchModal()" style="font-size: 16px;">🔍</button>
                         <button id="btn-start-call" class="btn-call hidden" onclick="startVoiceCall()">📞 Start Voice Call (48kHz)</button>
                     </div>
                 </header>
@@ -171,6 +173,27 @@
             
             <div class="modal-actions">
                 <button type="button" class="btn-secondary" onclick="closeSettings()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 100% On-Device Neural Semantic Search Modal -->
+    <div id="modal-neural-search" class="modal-overlay hidden">
+        <div class="modal-card" style="width: 580px; max-height: 85vh; display: flex; flex-direction: column;">
+            <h3>🧠 100% On-Device Neural Search</h3>
+            <p class="setting-desc" style="margin-bottom: 12px;">Zero-knowledge vector search across messages & 150MB media attachments.</p>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="neural-search-input" placeholder="Ask a natural question (e.g. 'What did we decide about the database?')" onkeydown="if(event.key==='Enter') executeNeuralSearch()">
+                <button class="btn-primary" style="width: auto; padding: 0 16px;" onclick="executeNeuralSearch()">Search</button>
+            </div>
+
+            <div id="neural-search-results" style="flex: 1; overflow-y: auto; max-height: 380px; display: flex; flex-direction: column; gap: 8px;">
+                <p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px;">Enter a natural query to compute 128-D vector matches.</p>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 14px;">
+                <button type="button" class="btn-secondary" onclick="closeNeuralSearchModal()">Close</button>
             </div>
         </div>
     </div>

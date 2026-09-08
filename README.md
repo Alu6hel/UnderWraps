@@ -9,6 +9,7 @@
 [![Pure ALU](https://img.shields.io/badge/Language-Pure_ALU-blue.svg)](https://github.com/Alu6hel/alu-language)
 [![Database](https://img.shields.io/badge/Database-Kybalion_DB-purple.svg)](https://github.com/Alu6hel/Kybalion)
 [![Media Guard](https://img.shields.io/badge/Strict_Limit-150_MB-brightgreen.svg)](src/alu/file_guard.alu)
+[![Neural Search](https://img.shields.io/badge/Neural_Search-100%25_On--Device_128--D-violet.svg)](#-100-on-device-neural-semantic-search)
 [![Live Themes](https://img.shields.io/badge/Live_Themes-3_Dynamic_Atmospheres-orange.svg)](#-3-live-dynamic-themes)
 [![License](https://img.shields.io/badge/Charter-Alumungandr_Master_Charter-emerald.svg)](ALUMUNGANDR_MASTER_LICENSE.md)
 
@@ -16,9 +17,20 @@
 
 ## 🌟 Overview
 
-**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring custom username & password registration, optional email 2FA, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, and a strictly enforced **150 MB** media attachment ceiling.
+**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring custom username & password registration, optional email 2FA, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, a strictly enforced **150 MB** media attachment ceiling, and **100% On-Device Neural Semantic Search** powered by the **Kybalion 128-D Vector Engine**.
 
 The server operates as **both an installable application with a visual control dashboard on Windows & Android** and a background daemon powered by the **Kybalion Multi-Modal Database Engine**.
+
+---
+
+## 🧠 100% On-Device Neural Semantic Search
+
+UnderWraps features zero-knowledge natural language semantic search running entirely on-device with zero external cloud or third-party AI dependencies:
+
+- **128-D Vector Embeddings**: Mathematical harmonic subword n-gram hash projection formally verified in Pure ALU (`src/alu/semantic_vector_engine.alu`).
+- **Natural Language Discovery**: Ask natural questions like *"What did we decide about the database schema?"* or *"Find the picture of the server rack"* and instantly retrieve ranked matches with cosine confidence scores.
+- **Unified Media & Message Search**: Seamlessly queries encrypted text, voice note transcripts, and 150MB media attachments.
+- **Strict Cryptographic Isolation**: Vector searches only scan conversations the authenticated user is an active member of.
 
 ---
 
@@ -44,6 +56,7 @@ UnderWraps features three high-performance live animated atmospheric shaders ren
 
 | Feature | Architecture & Implementation |
 |---|---|
+| **🧠 100% On-Device Neural Search** | Natural language 128-D vector queries across messages and 150MB media with zero cloud leaks (`src/alu/semantic_vector_engine.alu` & `src/database/kybalion_adapter.py`). |
 | **🔒 Custom Username & Auth** | Users register with custom usernames & passwords, salted & derived with Argon2id / PBKDF2-SHA512 in Pure ALU (`src/alu/crypto_vault.alu`). |
 | **🛡️ Optional Email 2FA** | Completely optional 2-Factor Authentication toggleable in Settings. Generates 6-digit cryptographic OTP challenges. |
 | **📦 Strict 150MB Media Ceiling** | Formally verified with Microsoft Z3 SMT bounds proving (`src/alu/file_guard.alu`). Strict multi-layer stream rejection at $157,286,400$ bytes. |

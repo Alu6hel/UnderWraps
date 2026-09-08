@@ -341,9 +341,18 @@ class UnderWrapsClientGUI:
         btn_settings = tk.Button(user_header, text="⚙️", font=("Segoe UI", 11), bg=BG_SIDEBAR, fg=TEXT_MUTED, activebackground=BG_INPUT, relief=tk.FLAT, cursor="hand2", command=self._show_settings_modal)
         btn_settings.pack(side=tk.RIGHT)
         
-        # New Chat Button
-        btn_new_chat = tk.Button(self.sidebar, text="➕ New Direct Message", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, activebackground="#262c36", relief=tk.FLAT, pady=8, cursor="hand2", command=self._prompt_new_chat)
-        btn_new_chat.pack(fill=tk.X, padx=12, pady=10)
+        btn_neural_search_top = tk.Button(user_header, text="🧠", font=("Segoe UI", 11), bg=BG_SIDEBAR, fg=ACCENT_BLUE, activebackground=BG_INPUT, relief=tk.FLAT, cursor="hand2", command=self._show_neural_search_modal)
+        btn_neural_search_top.pack(side=tk.RIGHT, padx=(0, 4))
+        
+        # Sidebar Action Buttons (New Chat + 100% On-Device Neural Search)
+        action_bar = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
+        action_bar.pack(fill=tk.X, padx=12, pady=10)
+        
+        btn_new_chat = tk.Button(action_bar, text="➕ New DM", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, activebackground="#262c36", relief=tk.FLAT, pady=8, cursor="hand2", command=self._prompt_new_chat)
+        btn_new_chat.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        
+        btn_search = tk.Button(action_bar, text="🧠 Neural Search", font=("Segoe UI", 9, "bold"), bg="#122c30" if self.current_theme=="aurora" else "#1b2533", fg=ACCENT_BLUE, activebackground="#263445", relief=tk.FLAT, pady=8, cursor="hand2", command=self._show_neural_search_modal)
+        btn_search.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(4, 0))
         
         # Conversation List Box
         self.conv_list_frame = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
@@ -367,6 +376,14 @@ class UnderWrapsClientGUI:
         self.btn_call = tk.Button(self.chat_header, text="📞 Start Voice Call (48kHz)", font=("Segoe UI", 9, "bold"), bg="#1a3b2b", fg=ACCENT_GREEN, activebackground="#23533c", relief=tk.FLAT, padx=12, pady=5, cursor="hand2", command=self._start_voice_call)
         self.btn_call.pack(side=tk.RIGHT)
         self.btn_call.pack_forget() # Hidden until conversation is selected
+        
+        # Header Search Trigger
+        self.btn_hdr_search = tk.Button(self.chat_header, text="🔍 Search Chat", font=("Segoe UI", 9), bg=BG_INPUT, fg=TEXT_MUTED, activebackground=BG_SIDEBAR, relief=tk.FLAT, padx=10, pady=5, cursor="hand2", command=self._show_neural_search_modal)
+        self.btn_hdr_search.pack(side=tk.RIGHT, padx=(0, 8))
+        
+        # Bind keyboard shortcuts
+        self.root.bind("<Control-f>", lambda e: self._show_neural_search_modal())
+        self.root.bind("<Control-F>", lambda e: self._show_neural_search_modal())
         
         # Message Feed Canvas & Scrollbar
         feed_container = tk.Frame(self.chat_area, bg=BG_CHAT)
@@ -959,9 +976,122 @@ class UnderWrapsClientGUI:
                     
                 self._load_conversations()
                 
-            tk.Button(dialog, text="Start Chat", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=start_dm).pack(pady=(0, 14))
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+    # --------------------------------------------------------------------------
+    # 100% On-Device Neural Semantic Search (Kybalion 128-D Vector Engine)
+    # --------------------------------------------------------------------------
+    def _show_neural_search_modal(self):
+        if not self.current_user:
+            return
+            
+        dialog = tk.Toplevel(self.root)
+        dialog.title("🧠 100% On-Device Neural Semantic Search")
+        dialog.geometry("640x560")
+        dialog.minsize(540, 420)
+        dialog.configure(bg=BG_SIDEBAR)
+        dialog.transient(self.root)
+        
+        # Header
+        header_frame = tk.Frame(dialog, bg=BG_SIDEBAR, padx=18, pady=14, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        header_frame.pack(fill=tk.X)
+        
+        tk.Label(header_frame, text="🧠 Neural Semantic Search (128-D Vector Index)", font=("Segoe UI", 12, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w")
+        tk.Label(header_frame, text="Zero-Knowledge • Natural Language • Messages & 150MB Media", font=("Segoe UI", 8), fg=ACCENT_BLUE, bg=BG_SIDEBAR).pack(anchor="w", pady=(2, 0))
+        
+        # Search Box Container
+        search_box_frame = tk.Frame(dialog, bg=BG_SIDEBAR, padx=18, pady=12)
+        search_box_frame.pack(fill=tk.X)
+        
+        entry_query = tk.Entry(search_box_frame, font=("Segoe UI", 11), bg=BG_INPUT, fg=TEXT_WHITE, insertbackground=TEXT_WHITE, relief=tk.FLAT)
+        entry_query.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6, padx=(0, 8))
+        entry_query.focus()
+        
+        btn_exec = tk.Button(search_box_frame, text="Search Vectors", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=4, cursor="hand2")
+        btn_exec.pack(side=tk.RIGHT)
+        
+        # Status / Zero-Knowledge badge
+        lbl_info = tk.Label(dialog, text="💡 Ask natural questions (e.g. 'What did we decide about the database schema?' or 'Find the picture of the server rack')", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR, wraplength=580, justify=tk.LEFT)
+        lbl_info.pack(anchor="w", padx=18, pady=(0, 8))
+        
+        # Results Scrollable Feed
+        results_container = tk.Frame(dialog, bg=BG_CHAT, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        results_container.pack(fill=tk.BOTH, expand=True, padx=18, pady=(0, 14))
+        
+        res_canvas = tk.Canvas(results_container, bg=BG_CHAT, highlightthickness=0)
+        res_scroll = ttk.Scrollbar(results_container, orient="vertical", command=res_canvas.yview)
+        res_inner = tk.Frame(res_canvas, bg=BG_CHAT)
+        
+        res_canvas.create_window((0, 0), window=res_inner, anchor="nw", width=580)
+        res_canvas.configure(yscrollcommand=res_scroll.set)
+        
+        res_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        res_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        res_inner.bind("<Configure>", lambda e: res_canvas.configure(scrollregion=res_canvas.bbox("all")))
+        
+        def run_search():
+            q = entry_query.get().strip()
+            if not q:
+                return
+            for w in res_inner.winfo_children():
+                w.destroy()
+                
+            lbl_loading = tk.Label(res_inner, text="Computing 128-D vector projection & querying Kybalion...", font=("Segoe UI", 9, "italic"), fg=TEXT_MUTED, bg=BG_CHAT)
+            lbl_loading.pack(pady=20)
+            dialog.update_idletasks()
+            
+            try:
+                encoded_q = urllib.parse.quote(q)
+                conv_param = f"&conversation_id={self.active_conv_id}" if self.active_conv_id else ""
+                req = urllib.request.Request(f"{self.server_http}/api/v1/search/semantic?user_id={self.current_user['user_id']}&q={encoded_q}{conv_param}&top_k=15")
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    res_data = json.loads(resp.read().decode("utf-8"))
+                results = res_data.get("results", [])
+                
+                for w in res_inner.winfo_children():
+                    w.destroy()
+                    
+                if not results:
+                    tk.Label(res_inner, text=f"No semantic matches found for '{q}'.", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=BG_CHAT).pack(pady=30)
+                    return
+                    
+                tk.Label(res_inner, text=f"Found {len(results)} matches ranked by 128-D cosine similarity:", font=("Segoe UI", 9, "bold"), fg=ACCENT_GREEN, bg=BG_CHAT).pack(anchor="w", padx=10, pady=(10, 6))
+                
+                for item in results:
+                    card = tk.Frame(res_inner, bg=BG_INPUT, padx=12, pady=10, highlightthickness=1, highlightbackground=BORDER_COLOR)
+                    card.pack(fill=tk.X, padx=10, pady=4)
+                    
+                    header_row = tk.Frame(card, bg=BG_INPUT)
+                    header_row.pack(fill=tk.X)
+                    
+                    score_val = item.get("similarity_score", 0.0)
+                    badge_color = ACCENT_GREEN if score_val >= 0.75 else (ACCENT_BLUE if score_val >= 0.50 else ACCENT_YELLOW)
+                    
+                    tk.Label(header_row, text=f"🎯 {item.get('similarity_percent', '0%')} Match", font=("Segoe UI", 8, "bold"), fg="#ffffff", bg=badge_color, padx=6, pady=1).pack(side=tk.LEFT)
+                    tk.Label(header_row, text=f" @{item.get('sender_username', 'User')} • {item.get('message_type', 'TEXT')}", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_INPUT).pack(side=tk.LEFT, padx=6)
+                    
+                    t_str = time.strftime("%b %d, %H:%M", time.localtime(item["created_at"] / 1000)) if item.get("created_at") else ""
+                    tk.Label(header_row, text=t_str, font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_INPUT).pack(side=tk.RIGHT)
+                    
+                    # Content Snippet
+                    snippet = item.get("text", "")
+                    if item.get("entity_type") == "ATTACHMENT":
+                        snippet = f"📁 [Attachment]: {item.get('file_name', 'File')} ({item.get('mime_type', 'Media')})"
+                    tk.Label(card, text=snippet, font=("Segoe UI", 9), fg=TEXT_WHITE, bg=BG_INPUT, wraplength=520, justify=tk.LEFT).pack(anchor="w", pady=(6, 4))
+                    
+                    # Jump Action
+                    target_conv_id = item.get("conversation_id")
+                    if target_conv_id:
+                        def jump(cid=target_conv_id, p_name=item.get("sender_username", "User")):
+                            dialog.destroy()
+                            self._select_conversation({"conversation_id": cid, "peer_id": item.get("sender_id"), "peer_username": p_name})
+                        btn_jump = tk.Button(card, text="↗ Open Conversation", font=("Segoe UI", 8, "bold"), bg=BG_SIDEBAR, fg=ACCENT_BLUE, relief=tk.FLAT, padx=8, pady=2, cursor="hand2", command=jump)
+                        btn_jump.pack(anchor="e")
+            except Exception as e:
+                for w in res_inner.winfo_children():
+                    w.destroy()
+                tk.Label(res_inner, text=f"Search error: {str(e)}", font=("Segoe UI", 9), fg=ACCENT_RED, bg=BG_CHAT).pack(pady=20)
+                
+        btn_exec.config(command=run_search)
+        entry_query.bind("<Return>", lambda e: run_search())
 
     def _on_close(self):
         self.ws_connected = False

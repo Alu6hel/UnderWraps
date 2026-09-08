@@ -19,3 +19,10 @@ icon = "assets/icons/underwraps_512.ico"
 [media]
 max_allowed_file_bytes = 157286400 # Strict 150MB
 sample_rate_hz = 48000
+
+[vector_engine]
+dimension = 128
+metric = "COSINE"
+hnsw_m = 16
+hnsw_ef_search = 200
+on_device_neural_tokenization = true

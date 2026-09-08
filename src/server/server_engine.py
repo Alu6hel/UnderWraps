@@ -292,6 +292,17 @@ class UnderWrapsServer:
                         calls = engine.db.get_recent_calls(user_id)
                         return self.send_json(200, {"calls": calls})
 
+                    # 8. Neural Semantic Search (100% On-Device / Zero-Knowledge)
+                    if path == "/api/v1/search/semantic":
+                        user_id = query.get("user_id", [None])[0]
+                        q = query.get("q", [""])[0]
+                        conv_id = query.get("conversation_id", [None])[0]
+                        top_k = int(query.get("top_k", [10])[0])
+                        if not user_id or not q:
+                            return self.send_json(400, {"error": "Missing user_id or query parameter 'q'"})
+                        results = engine.db.semantic_search(user_id, q, conversation_id=conv_id, top_k=top_k)
+                        return self.send_json(200, {"query": q, "results": results, "count": len(results)})
+
                     self.send_json(404, {"error": "Endpoint not found", "path": path})
                 except Exception as e:
                     engine.log(f"HTTP GET Error ({path}): {str(e)}", "ERROR")

@@ -12,7 +12,8 @@
     "file_guard": "Strict 150MB Ceiling (157,286,400 bytes)",
     "audio_dsp": "48kHz Lossless Voice Calling & Waveform Visualizer",
     "auth": "Custom Username/Password with Optional Email 2FA",
-    "live_themes": ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"]
+    "live_themes": ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"],
+    "neural_search": "100% On-Device 128-D Kybalion Vector Index (Zero-Knowledge Natural Language)"
   },
   "targets": [
     {

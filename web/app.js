@@ -315,6 +315,75 @@ function endVoiceCall() {
 function openSettings() { document.getElementById('modal-settings').classList.remove('hidden'); }
 function closeSettings() { document.getElementById('modal-settings').classList.add('hidden'); }
 
+function openNeuralSearchModal() {
+    document.getElementById('modal-neural-search').classList.remove('hidden');
+    const input = document.getElementById('neural-search-input');
+    if (input) {
+        input.focus();
+        input.select();
+    }
+}
+
+function closeNeuralSearchModal() {
+    document.getElementById('modal-neural-search').classList.add('hidden');
+}
+
+async function executeNeuralSearch() {
+    if (!currentUser) return;
+    const input = document.getElementById('neural-search-input');
+    const q = input ? input.value.trim() : '';
+    if (!q) return;
+
+    const resList = document.getElementById('neural-search-results');
+    resList.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px;">Computing 128-D vector projection & querying Kybalion...</p>';
+
+    try {
+        const convParam = activeConvId ? `&conversation_id=${activeConvId}` : '';
+        const resp = await fetch(`${API_BASE}/api/v1/search/semantic?user_id=${currentUser.user_id}&q=${encodeURIComponent(q)}${convParam}&top_k=15`);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Search failed');
+
+        const results = data.results || [];
+        resList.innerHTML = '';
+
+        if (results.length === 0) {
+            resList.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px;">No semantic matches found for "${q}".</p>`;
+            return;
+        }
+
+        results.forEach(r => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; cursor: pointer;';
+            const badgeColor = r.similarity_score >= 0.75 ? 'var(--accent-green)' : (r.similarity_score >= 0.5 ? 'var(--accent-blue)' : 'var(--accent-yellow)');
+
+            let textPreview = r.text;
+            if (r.entity_type === 'ATTACHMENT') {
+                textPreview = `📁 [Attachment]: ${r.file_name || 'File'} (${r.mime_type || 'Media'})`;
+            }
+
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="background: ${badgeColor}; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">🎯 ${r.similarity_percent} Match</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">@${r.sender_username || 'User'} • ${new Date(r.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div style="font-size: 13px; color: var(--text-white); margin: 6px 0;">${textPreview}</div>
+                <div style="text-align: right; font-size: 11px; color: var(--accent-blue); font-weight: 600;">↗ Open Conversation</div>
+            `;
+
+            card.onclick = () => {
+                closeNeuralSearchModal();
+                if (r.conversation_id) {
+                    selectConversation({ conversation_id: r.conversation_id, peer_id: r.sender_id, peer_username: r.sender_username });
+                }
+            };
+
+            resList.appendChild(card);
+        });
+    } catch (err) {
+        resList.innerHTML = `<p style="text-align: center; color: var(--accent-red); font-size: 12px; margin-top: 20px;">Error: ${err.message}</p>`;
+    }
+}
+
 async function toggle2FA() {
     if (!currentUser) return;
     const isEnabled = currentUser.two_factor_enabled || false;

@@ -11,6 +11,7 @@ build/
 underwraps_data/
 underwraps_test_data/
 underwraps_e2e_data/
+underwraps_semantic_test_data/
 *.log
 *.wal
 *.db-journal
