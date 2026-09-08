@@ -12,7 +12,15 @@ import sys
 import argparse
 import tkinter as tk
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+# Handle PyInstaller onefile runtime path vs development path
+if getattr(sys, "frozen", False):
+    basedir = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+else:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+
+if basedir not in sys.path:
+    sys.path.insert(0, basedir)
+
 from src.server_ui.desktop_server_app import UnderWrapsServerGUI
 from src.server.server_engine import UnderWrapsServer
 
