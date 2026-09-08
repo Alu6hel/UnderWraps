@@ -1,0 +1,84 @@
+// ==============================================================================
+// ALU Master Kernel: Sound-Reactive Live Theme Shaders
+// SMT-Verified Audio Frequency Modulation for Galaxy, Inverted & Aurora Themes
+//
+// Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
+// License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
+// ==============================================================================
+
+module SoundReactiveThemeEngine {
+    // Verified Invariants:
+    // 1. Audio amplitude must be normalized strictly in [0.0, 1.0]
+    // 2. Particle velocity multiplier must stay bounded in [1.0, 5.0]
+    // 3. Gravitational wave expansion multiplier in [1.0, 4.0]
+    // 4. Aurora ribbon harmonic amplitude in [30.0, 160.0]
+
+    struct AudioState {
+        amplitude: f32,       // Normalized RMS amplitude [0.0, 1.0]
+        peak_frequency: f32,  // Dominant frequency in Hz [20.0, 20000.0]
+        bass_energy: f32,     // Low-frequency band energy [0.0, 1.0]
+        treble_energy: f32,   // High-frequency band energy [0.0, 1.0]
+        is_active: bool,      // True if voice note playing or call active
+        sensitivity: f32      // User-configured multiplier [0.5, 2.5]
+    }
+
+    struct ThemeModulation {
+        particle_speed_mult: f32,
+        particle_glow_boost: f32,
+        gravitational_wave_speed: f32,
+        aurora_harmonic_disp: f32,
+        grid_pulse_alpha: f32
+    }
+
+    // Clamp helper to enforce mathematical safety
+    fn clamp_f32(val: f32, min_val: f32, max_val: f32) -> f32 {
+        if val < min_val {
+            return min_val;
+        }
+        if val > max_val {
+            return max_val;
+        }
+        return val;
+    }
+
+    // Compute real-time shader modulation factors from audio state
+    #[smt_verify]
+    #[invariant(audio.amplitude >= 0.0 && audio.amplitude <= 1.0)]
+    #[ensures(result.particle_speed_mult >= 1.0 && result.particle_speed_mult <= 5.0)]
+    #[ensures(result.gravitational_wave_speed >= 1.0 && result.gravitational_wave_speed <= 4.0)]
+    #[ensures(result.aurora_harmonic_disp >= 30.0 && result.aurora_harmonic_disp <= 160.0)]
+    pub fn compute_theme_modulation(audio: AudioState) -> ThemeModulation {
+        if !audio.is_active || audio.amplitude <= 0.001 {
+            return ThemeModulation {
+                particle_speed_mult: 1.0,
+                particle_glow_boost: 0.0,
+                gravitational_wave_speed: 1.0,
+                aurora_harmonic_disp: 55.0,
+                grid_pulse_alpha: 0.14
+            };
+        }
+
+        let clamped_amp: f32 = clamp_f32(audio.amplitude, 0.0, 1.0);
+        let sens: f32 = clamp_f32(audio.sensitivity, 0.5, 2.5);
+        let effective_amp: f32 = clamp_f32(clamped_amp * sens, 0.0, 1.0);
+
+        // 1. Dark Galaxy Field Modulation: Particle acceleration & nebula glow
+        let speed_mult: f32 = clamp_f32(1.0 + (effective_amp * 4.0), 1.0, 5.0);
+        let glow_boost: f32 = clamp_f32(effective_amp * 0.75, 0.0, 0.75);
+
+        // 2. Inverted Stars Modulation: Gravitational wave expansion rate
+        let wave_speed: f32 = clamp_f32(1.0 + (effective_amp * 3.0), 1.0, 4.0);
+
+        // 3. Cyber Aurora Matrix Modulation: Plasma ribbon vertical harmonics
+        let aurora_disp: f32 = clamp_f32(55.0 + (effective_amp * 100.0), 30.0, 160.0);
+        let grid_alpha: f32 = clamp_f32(0.14 + (effective_amp * 0.35), 0.14, 0.50);
+
+        return ThemeModulation {
+            particle_speed_mult: speed_mult,
+            particle_glow_boost: glow_boost,
+            gravitational_wave_speed: wave_speed,
+            aurora_harmonic_disp: aurora_disp,
+            grid_pulse_alpha: grid_alpha
+        };
+    }
+}

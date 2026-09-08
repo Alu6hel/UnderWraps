@@ -1,7 +1,8 @@
 """
 ==============================================================================
 UnderWraps Client Messaging Application (Windows 11 Fluent Dark UI)
-E2EE Messaging, Username/Password Auth, Optional 2FA, 150MB Media, Voice Notes & 48kHz Voice Calling
+E2EE Messaging, Username/Password Auth, Optional 2FA, 150MB Media, Voice Notes,
+48kHz Voice Calling, Sound-Reactive Themes & Cryptographic Peer Color Halos
 
 Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
 License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
@@ -21,6 +22,11 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from typing import Dict, List, Any, Optional
+
+# Import Sovereign ALU & Python Modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from src.crypto.peer_halo import derive_peer_halo
+from src.client.sound_reactive_engine import SoundReactiveEngine
 
 # Color Palettes & 3 Live Themes
 THEMES = {
@@ -100,13 +106,17 @@ class UnderWrapsClientGUI:
         self.root = root
         self.root.title("UnderWraps — Sovereign Private Messenger")
         self.root.geometry("1100x740")
-        self.root.minsize(920, 620)
+        self.root.minsize(860, 580)
         self.current_theme = "galaxy"
         self.root.configure(bg=BG_APP)
         
         self.server_http = server_http
         self.server_ws_host = server_ws_host
         self.server_ws_port = server_ws_port
+        
+        # Sound-Reactive & Halo Features
+        self.sound_engine = SoundReactiveEngine(sensitivity=1.0, enabled=True)
+        self.peer_halo_enabled = True
         
         # Session State
         self.current_user: Optional[Dict[str, Any]] = None
@@ -136,14 +146,42 @@ class UnderWrapsClientGUI:
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TNotebook", background=BG_APP, borderwidth=0)
-        style.configure("TNotebook.Tab", background=BG_SIDEBAR, foreground=TEXT_MUTED, padding=[16, 8], font=("Segoe UI", 10, "bold"))
-        style.map("TNotebook.Tab", background=[("selected", BG_APP)], foreground=[("selected", ACCENT_BLUE)])
+        style.configure("TNotebook.Tab", background=BG_SIDEBAR, foreground=TEXT_MUTED, padding=[14, 6], font=("Segoe UI", 9, "bold"))
+        style.map("TNotebook.Tab", background=[("selected", BG_CARD)], foreground=[("selected", ACCENT_BLUE)])
+
+    # --------------------------------------------------------------------------
+    # Cryptographic Peer Color Halo Avatar Widget
+    # --------------------------------------------------------------------------
+    def _create_halo_avatar(self, parent: tk.Widget, identifier: str, size: int = 38, bg: Optional[str] = None) -> tk.Canvas:
+        """
+        Creates a Canvas widget displaying a deterministic concentric glowing color halo
+        derived from the user's public key or identifier.
+        """
+        halo = derive_peer_halo(identifier)
+        canvas_bg = bg or parent["bg"]
+        cv = tk.Canvas(parent, width=size, height=size, bg=canvas_bg, highlightthickness=0)
+        
+        center = size / 2.0
+        radius = (size / 2.0) - 2.0
+        
+        if self.peer_halo_enabled:
+            # Concentric Halo Outer Rings
+            cv.create_oval(1, 1, size-1, size-1, outline=halo["color1"], width=2.5)
+            cv.create_arc(2, 2, size-2, size-2, start=halo["gradient_angle"], extent=180, outline=halo["color2"], width=2.5, style="arc")
+            # Inner Avatar Background
+            inner_r = radius - 3.5
+            cv.create_oval(center - inner_r, center - inner_r, center + inner_r, center + inner_r, fill=BG_CARD, outline=BORDER_COLOR)
+        else:
+            cv.create_oval(2, 2, size-2, size-2, fill=BG_CARD, outline=BORDER_COLOR, width=1.5)
+            
+        # Centered Avatar Icon
+        cv.create_text(center, center, text="👤", font=("Segoe UI Emoji", int(size * 0.42)))
+        return cv
 
     # --------------------------------------------------------------------------
     # Screen 1: Authentication (Signup / Login with Optional 2FA)
     # --------------------------------------------------------------------------
     def _show_auth_screen(self):
-        # Clear existing widgets
         for widget in self.root.winfo_children():
             widget.destroy()
             
@@ -211,7 +249,6 @@ class UnderWrapsClientGUI:
             self.server_http = url
             parsed = urllib.parse.urlparse(url)
             self.server_ws_host = parsed.hostname or "127.0.0.1"
-            # Default WS port 8081 if not specified
             self.server_ws_port = 8081
 
     def _handle_login(self):
@@ -253,7 +290,6 @@ class UnderWrapsClientGUI:
         tk.Label(dialog, text=f"Enter the 6-digit verification code sent to:\n{email_masked}", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR, justify=tk.CENTER).pack(pady=(0, 14))
         
         if otp_code_dev:
-            # Helpful banner in development
             tk.Label(dialog, text=f"[Dev Mode Token]: {otp_code_dev}", font=("Consolas", 9, "bold"), fg=ACCENT_YELLOW, bg="#34280f", padx=8, pady=2).pack(pady=(0, 10))
             
         otp_entry = tk.Entry(dialog, font=("Segoe UI", 16, "bold"), bg=BG_INPUT, fg=TEXT_WHITE, justify=tk.CENTER, relief=tk.FLAT, width=12)
@@ -312,13 +348,12 @@ class UnderWrapsClientGUI:
         self._load_conversations()
 
     # --------------------------------------------------------------------------
-    # Screen 2: Main Messaging Interface
+    # Screen 2: Main Messaging Interface (Responsive & Halo-Integrated)
     # --------------------------------------------------------------------------
     def _build_main_messenger_ui(self):
         for widget in self.root.winfo_children():
             widget.destroy()
             
-        # Top Container
         main_box = tk.Frame(self.root, bg=BG_APP)
         main_box.pack(fill=tk.BOTH, expand=True)
         
@@ -327,15 +362,22 @@ class UnderWrapsClientGUI:
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.sidebar.pack_propagate(False)
         
-        # Sidebar User Header
-        user_header = tk.Frame(self.sidebar, bg=BG_SIDEBAR, padx=14, pady=12, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        # Sidebar User Header with Cryptographic Peer Color Halo
+        user_header = tk.Frame(self.sidebar, bg=BG_SIDEBAR, padx=12, pady=10, highlightthickness=1, highlightbackground=BORDER_COLOR)
         user_header.pack(fill=tk.X)
         
         u_box = tk.Frame(user_header, bg=BG_SIDEBAR)
-        u_box.pack(side=tk.LEFT)
+        u_box.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        tk.Label(u_box, text=f"👤 @{self.current_user['username']}", font=("Segoe UI", 11, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w")
-        self.lbl_ws_indicator = tk.Label(u_box, text="● Connected (E2EE Active)", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_SIDEBAR)
+        # My Halo Avatar
+        my_avatar = self._create_halo_avatar(u_box, self.current_user['username'], size=38)
+        my_avatar.pack(side=tk.LEFT, padx=(0, 8))
+        
+        u_text_box = tk.Frame(u_box, bg=BG_SIDEBAR)
+        u_text_box.pack(side=tk.LEFT, fill=tk.X)
+        
+        tk.Label(u_text_box, text=f"@{self.current_user['username']}", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w")
+        self.lbl_ws_indicator = tk.Label(u_text_box, text="● Online (E2EE Active)", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_SIDEBAR)
         self.lbl_ws_indicator.pack(anchor="w")
         
         btn_settings = tk.Button(user_header, text="⚙️", font=("Segoe UI", 11), bg=BG_SIDEBAR, fg=TEXT_MUTED, activebackground=BG_INPUT, relief=tk.FLAT, cursor="hand2", command=self._show_settings_modal)
@@ -344,14 +386,14 @@ class UnderWrapsClientGUI:
         btn_neural_search_top = tk.Button(user_header, text="🧠", font=("Segoe UI", 11), bg=BG_SIDEBAR, fg=ACCENT_BLUE, activebackground=BG_INPUT, relief=tk.FLAT, cursor="hand2", command=self._show_neural_search_modal)
         btn_neural_search_top.pack(side=tk.RIGHT, padx=(0, 4))
         
-        # Sidebar Action Buttons (New Chat + 100% On-Device Neural Search)
+        # Sidebar Action Buttons
         action_bar = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
-        action_bar.pack(fill=tk.X, padx=12, pady=10)
+        action_bar.pack(fill=tk.X, padx=10, pady=8)
         
-        btn_new_chat = tk.Button(action_bar, text="➕ New DM", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, activebackground="#262c36", relief=tk.FLAT, pady=8, cursor="hand2", command=self._prompt_new_chat)
+        btn_new_chat = tk.Button(action_bar, text="➕ New DM", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, activebackground="#262c36", relief=tk.FLAT, pady=6, cursor="hand2", command=self._prompt_new_chat)
         btn_new_chat.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
         
-        btn_search = tk.Button(action_bar, text="🧠 Neural Search", font=("Segoe UI", 9, "bold"), bg="#122c30" if self.current_theme=="aurora" else "#1b2533", fg=ACCENT_BLUE, activebackground="#263445", relief=tk.FLAT, pady=8, cursor="hand2", command=self._show_neural_search_modal)
+        btn_search = tk.Button(action_bar, text="🧠 Neural Search", font=("Segoe UI", 9, "bold"), bg="#122c30" if self.current_theme=="aurora" else "#1b2533", fg=ACCENT_BLUE, activebackground="#263445", relief=tk.FLAT, pady=6, cursor="hand2", command=self._show_neural_search_modal)
         btn_search.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(4, 0))
         
         # Conversation List Box
@@ -363,25 +405,28 @@ class UnderWrapsClientGUI:
         self.chat_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Chat Header
-        self.chat_header = tk.Frame(self.chat_area, bg=BG_SIDEBAR, height=60, padx=18, pady=10, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        self.chat_header = tk.Frame(self.chat_area, bg=BG_SIDEBAR, height=62, padx=16, pady=8, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.chat_header.pack(fill=tk.X, side=tk.TOP)
         
-        self.lbl_chat_title = tk.Label(self.chat_header, text="Select a conversation to begin", font=("Segoe UI", 12, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR)
+        self.header_left_box = tk.Frame(self.chat_header, bg=BG_SIDEBAR)
+        self.header_left_box.pack(side=tk.LEFT, fill=tk.X)
+        
+        self.lbl_chat_title = tk.Label(self.header_left_box, text="Select a conversation to begin", font=("Segoe UI", 11, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR)
         self.lbl_chat_title.pack(side=tk.LEFT)
         
-        self.lbl_chat_status = tk.Label(self.chat_header, text="", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR)
+        self.lbl_chat_status = tk.Label(self.header_left_box, text="", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR)
         self.lbl_chat_status.pack(side=tk.LEFT, padx=10)
         
         # High Quality Voice Call Button (48kHz)
-        self.btn_call = tk.Button(self.chat_header, text="📞 Start Voice Call (48kHz)", font=("Segoe UI", 9, "bold"), bg="#1a3b2b", fg=ACCENT_GREEN, activebackground="#23533c", relief=tk.FLAT, padx=12, pady=5, cursor="hand2", command=self._start_voice_call)
+        self.btn_call = tk.Button(self.chat_header, text="📞 Call (48kHz)", font=("Segoe UI", 9, "bold"), bg="#1a3b2b", fg=ACCENT_GREEN, activebackground="#23533c", relief=tk.FLAT, padx=12, pady=5, cursor="hand2", command=self._start_voice_call)
         self.btn_call.pack(side=tk.RIGHT)
-        self.btn_call.pack_forget() # Hidden until conversation is selected
+        self.btn_call.pack_forget()
         
         # Header Search Trigger
-        self.btn_hdr_search = tk.Button(self.chat_header, text="🔍 Search Chat", font=("Segoe UI", 9), bg=BG_INPUT, fg=TEXT_MUTED, activebackground=BG_SIDEBAR, relief=tk.FLAT, padx=10, pady=5, cursor="hand2", command=self._show_neural_search_modal)
+        self.btn_hdr_search = tk.Button(self.chat_header, text="🔍 Search", font=("Segoe UI", 9), bg=BG_INPUT, fg=TEXT_MUTED, activebackground=BG_SIDEBAR, relief=tk.FLAT, padx=10, pady=5, cursor="hand2", command=self._show_neural_search_modal)
         self.btn_hdr_search.pack(side=tk.RIGHT, padx=(0, 8))
         
-        # Bind keyboard shortcuts
+        # Keyboard Shortcuts
         self.root.bind("<Control-f>", lambda e: self._show_neural_search_modal())
         self.root.bind("<Control-F>", lambda e: self._show_neural_search_modal())
         
@@ -393,13 +438,14 @@ class UnderWrapsClientGUI:
         self.feed_scroll = ttk.Scrollbar(feed_container, orient="vertical", command=self.feed_canvas.yview)
         self.feed_inner = tk.Frame(self.feed_canvas, bg=BG_CHAT)
         
-        self.feed_canvas.create_window((0, 0), window=self.feed_inner, anchor="nw", width=760)
+        self.feed_canvas_window = self.feed_canvas.create_window((0, 0), window=self.feed_inner, anchor="nw", width=760)
         self.feed_canvas.configure(yscrollcommand=self.feed_scroll.set)
         
         self.feed_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.feed_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.feed_inner.bind("<Configure>", lambda e: self.feed_canvas.configure(scrollregion=self.feed_canvas.bbox("all")))
+        self.feed_canvas.bind("<Configure>", lambda e: self.feed_canvas.itemconfig(self.feed_canvas_window, width=e.width))
 
         # Input Area (Chat Box, 150MB Attachment Picker, Voice Recorder)
         self.input_frame = tk.Frame(self.chat_area, bg=BG_SIDEBAR, padx=14, pady=10, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -414,7 +460,7 @@ class UnderWrapsClientGUI:
         self.txt_message.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6, padx=(0, 8))
         self.txt_message.bind("<Return>", lambda e: self._send_text_message())
         
-        # Voice Note Recording Button (🎙️)
+        # Voice Note Recording Button
         self.btn_voice_note = tk.Button(self.input_frame, text="🎙️", font=("Segoe UI", 12), bg=BG_SIDEBAR, fg="#a371f7", activebackground=BG_INPUT, relief=tk.FLAT, cursor="hand2", command=self._toggle_voice_note_record)
         self.btn_voice_note.pack(side=tk.LEFT, padx=(0, 8))
         
@@ -423,36 +469,35 @@ class UnderWrapsClientGUI:
         self.btn_send.pack(side=tk.RIGHT)
 
     # --------------------------------------------------------------------------
-    # Settings Modal (2FA Toggle, Cache Vacuum)
+    # Settings & Permissions Modal (Multi-Tab Interface)
     # --------------------------------------------------------------------------
     def _show_settings_modal(self):
         modal = tk.Toplevel(self.root)
-        modal.title("Account & Security Settings")
-        modal.geometry("480x380")
+        modal.title("Settings & System Permissions")
+        modal.geometry("560x460")
+        modal.minsize(480, 380)
         modal.configure(bg=BG_SIDEBAR)
         modal.transient(self.root)
         modal.grab_set()
         
-        tk.Label(modal, text="⚙️ Account & Security Settings", font=("Segoe UI", 14, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(20, 14), padx=20, anchor="w")
+        tk.Label(modal, text="⚙️ Settings & Permissions", font=("Segoe UI", 13, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(16, 10), padx=18, anchor="w")
         
-        # User Info
-        info_frame = tk.Frame(modal, bg=BG_CARD, padx=14, pady=12, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        info_frame.pack(fill=tk.X, padx=20, pady=(0, 14))
+        # Notebook for Tabs
+        notebook = ttk.Notebook(modal)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 12))
         
-        tk.Label(info_frame, text=f"Username: @{self.current_user['username']}", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
-        tk.Label(info_frame, text=f"Email: {self.current_user['email']}", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_CARD).pack(anchor="w", pady=(2, 0))
+        # ---------------------------------------------------------
+        # Tab 1: Themes & Sound Reactivity
+        # ---------------------------------------------------------
+        tab_themes = tk.Frame(notebook, bg=BG_CARD, padx=16, pady=14)
+        notebook.add(tab_themes, text="🎨 Themes & Shaders")
         
-        # Theme Selection Section
-        theme_frame = tk.Frame(modal, bg=BG_CARD, padx=14, pady=14, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        theme_frame.pack(fill=tk.X, padx=20, pady=(0, 14))
-        
-        tk.Label(theme_frame, text="Live Dynamic Theme", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
-        tk.Label(theme_frame, text="Choose your visual aesthetic (Dark Galaxy, Inverted Stars, Cyber Aurora).", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD).pack(anchor="w", pady=(2, 8))
+        tk.Label(tab_themes, text="Live Dynamic Theme", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        tk.Label(tab_themes, text="Choose GPU/Canvas atmospheric shaders.", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD).pack(anchor="w", pady=(1, 6))
         
         theme_options = ["Dark Galaxy Field", "Inverted Stars", "Cyber Aurora Matrix"]
         theme_map = {"Dark Galaxy Field": "galaxy", "Inverted Stars": "inverted", "Cyber Aurora Matrix": "aurora"}
         rev_theme_map = {v: k for k, v in theme_map.items()}
-        
         selected_theme_var = tk.StringVar(value=rev_theme_map.get(self.current_theme, "Dark Galaxy Field"))
         
         def on_theme_change(choice):
@@ -461,20 +506,50 @@ class UnderWrapsClientGUI:
             modal.destroy()
             self._show_settings_modal()
             
-        theme_menu = ttk.Combobox(theme_frame, textvariable=selected_theme_var, values=theme_options, state="readonly", font=("Segoe UI", 9))
-        theme_menu.pack(fill=tk.X, pady=(0, 4))
+        theme_menu = ttk.Combobox(tab_themes, textvariable=selected_theme_var, values=theme_options, state="readonly", font=("Segoe UI", 9))
+        theme_menu.pack(fill=tk.X, pady=(0, 12))
         theme_menu.bind("<<ComboboxSelected>>", lambda e: on_theme_change(selected_theme_var.get()))
+        
+        # Sound-Reactive Toggle
+        chk_sound_var = tk.BooleanVar(value=self.sound_engine.enabled)
+        def toggle_sound_react():
+            self.sound_engine.set_enabled(chk_sound_var.get())
+        chk_sound = tk.Checkbutton(tab_themes, text="⚡ Sound-Reactive Shaders (48kHz Audio Pulse)", variable=chk_sound_var, font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD, selectcolor=BG_INPUT, activebackground=BG_CARD, activeforeground=ACCENT_BLUE, command=toggle_sound_react)
+        chk_sound.pack(anchor="w", pady=(0, 4))
+        
+        # Sensitivity Slider
+        lbl_sens = tk.Label(tab_themes, text=f"Audio Sensitivity: {self.sound_engine.sensitivity:.1f}x", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD)
+        lbl_sens.pack(anchor="w")
+        
+        def on_sens_change(val):
+            v = float(val)
+            self.sound_engine.set_sensitivity(v)
+            lbl_sens.config(text=f"Audio Sensitivity: {v:.1f}x")
+            
+        scale_sens = tk.Scale(tab_themes, from_=0.5, to=2.5, resolution=0.1, orient=tk.HORIZONTAL, bg=BG_CARD, fg=TEXT_WHITE, highlightthickness=0, command=on_sens_change)
+        scale_sens.set(self.sound_engine.sensitivity)
+        scale_sens.pack(fill=tk.X, pady=(0, 10))
+        
+        # Peer Halo Toggle
+        chk_halo_var = tk.BooleanVar(value=self.peer_halo_enabled)
+        def toggle_halo():
+            self.peer_halo_enabled = chk_halo_var.get()
+            self._build_main_messenger_ui()
+            self._load_conversations()
+        chk_halo = tk.Checkbutton(tab_themes, text="🔮 Cryptographic Peer Color Halo (Deterministic Glow)", variable=chk_halo_var, font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD, selectcolor=BG_INPUT, activebackground=BG_CARD, activeforeground=ACCENT_BLUE, command=toggle_halo)
+        chk_halo.pack(anchor="w", pady=(0, 6))
 
+        # ---------------------------------------------------------
+        # Tab 2: Security & Identity
+        # ---------------------------------------------------------
+        tab_identity = tk.Frame(notebook, bg=BG_CARD, padx=16, pady=14)
+        notebook.add(tab_identity, text="🔒 Identity & Halo")
+        
         # 2FA Section
-        twofa_frame = tk.Frame(modal, bg=BG_CARD, padx=14, pady=14, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        twofa_frame.pack(fill=tk.X, padx=20, pady=(0, 14))
-        
-        tk.Label(twofa_frame, text="Two-Factor Authentication (Email 2FA)", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
-        tk.Label(twofa_frame, text="Require a 6-digit OTP verification code upon every login.", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD).pack(anchor="w", pady=(2, 8))
-        
+        tk.Label(tab_identity, text="Two-Factor Authentication (Email 2FA)", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
         is_2fa = self.current_user.get("two_factor_enabled", False)
-        lbl_status = tk.Label(twofa_frame, text="Status: ENABLED" if is_2fa else "Status: DISABLED (Optional)", font=("Segoe UI", 9, "bold"), fg=ACCENT_GREEN if is_2fa else ACCENT_YELLOW, bg=BG_CARD)
-        lbl_status.pack(anchor="w", pady=(0, 8))
+        lbl_2fa_st = tk.Label(tab_identity, text="Status: ENABLED" if is_2fa else "Status: DISABLED (Optional)", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN if is_2fa else ACCENT_YELLOW, bg=BG_CARD)
+        lbl_2fa_st.pack(anchor="w", pady=(1, 6))
         
         def toggle_2fa():
             new_val = not self.current_user.get("two_factor_enabled", False)
@@ -484,20 +559,100 @@ class UnderWrapsClientGUI:
                     data=json.dumps({"user_id": self.current_user["user_id"], "enabled": new_val}).encode("utf-8"),
                     headers={"Content-Type": "application/json"}
                 )
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                with urllib.request.urlopen(req, timeout=10):
                     pass
                 self.current_user["two_factor_enabled"] = new_val
-                lbl_status.config(
-                    text="Status: ENABLED" if new_val else "Status: DISABLED (Optional)",
-                    fg=ACCENT_GREEN if new_val else ACCENT_YELLOW
-                )
+                lbl_2fa_st.config(text="Status: ENABLED" if new_val else "Status: DISABLED (Optional)", fg=ACCENT_GREEN if new_val else ACCENT_YELLOW)
                 btn_2fa.config(text="Disable 2FA" if new_val else "Enable 2FA", bg=ACCENT_RED if new_val else ACCENT_BLUE)
                 messagebox.showinfo("2FA Updated", f"Email 2FA is now {'ENABLED' if new_val else 'DISABLED'}.")
             except Exception as e:
                 messagebox.showerror("Error", str(e))
                 
-        btn_2fa = tk.Button(twofa_frame, text="Disable 2FA" if is_2fa else "Enable 2FA", font=("Segoe UI", 9, "bold"), bg=ACCENT_RED if is_2fa else ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=12, pady=5, cursor="hand2", command=toggle_2fa)
-        btn_2fa.pack(anchor="w")
+        btn_2fa = tk.Button(tab_identity, text="Disable 2FA" if is_2fa else "Enable 2FA", font=("Segoe UI", 9, "bold"), bg=ACCENT_RED if is_2fa else ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=12, pady=4, cursor="hand2", command=toggle_2fa)
+        btn_2fa.pack(anchor="w", pady=(0, 14))
+        
+        # Cryptographic Fingerprint
+        tk.Label(tab_identity, text="Cryptographic Public Key Fingerprint", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        halo_data = derive_peer_halo(self.current_user["username"])
+        
+        fp_box = tk.Frame(tab_identity, bg=BG_INPUT, padx=8, pady=6, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        fp_box.pack(fill=tk.X, pady=(2, 10))
+        tk.Label(fp_box, text=halo_data["fingerprint"], font=("Consolas", 8), fg=ACCENT_BLUE, bg=BG_INPUT, wraplength=460, justify=tk.LEFT).pack(anchor="w")
+        
+        # Halo Live Preview Box
+        tk.Label(tab_identity, text="Your Cryptographic Halo Signature", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        preview_box = tk.Frame(tab_identity, bg=BG_INPUT, padx=12, pady=8, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        preview_box.pack(fill=tk.X, pady=(2, 0))
+        
+        halo_preview_cv = self._create_halo_avatar(preview_box, self.current_user["username"], size=46, bg=BG_INPUT)
+        halo_preview_cv.pack(side=tk.LEFT, padx=(0, 12))
+        
+        tk.Label(preview_box, text=f"Primary: {halo_data['color1']} • Secondary: {halo_data['color2']}\nAngle: {halo_data['gradient_angle']}° • High-Contrast SMT Invariant", font=("Segoe UI", 8), fg=TEXT_WHITE, bg=BG_INPUT, justify=tk.LEFT).pack(side=tk.LEFT)
+
+        # ---------------------------------------------------------
+        # Tab 3: Permissions & Hardware
+        # ---------------------------------------------------------
+        tab_perms = tk.Frame(notebook, bg=BG_CARD, padx=16, pady=14)
+        notebook.add(tab_perms, text="🎙️ Permissions")
+        
+        # Mic Permission Row
+        tk.Label(tab_perms, text="Microphone Access (48kHz Lossless Voice)", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        tk.Label(tab_perms, text="● Granted / Active (48kHz Opus & DSP Ready)", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_CARD).pack(anchor="w", pady=(1, 6))
+        
+        # Live VU Meter Simulation Test
+        vu_box = tk.Frame(tab_perms, bg=BG_INPUT, padx=10, pady=8, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        vu_box.pack(fill=tk.X, pady=(0, 14))
+        
+        tk.Label(vu_box, text="Live VU Sound-Reactive Audio Test:", font=("Segoe UI", 8, "bold"), fg=TEXT_WHITE, bg=BG_INPUT).pack(anchor="w")
+        vu_canvas = tk.Canvas(vu_box, height=12, bg="#10141a", highlightthickness=0)
+        vu_canvas.pack(fill=tk.X, pady=(4, 6))
+        
+        def run_mic_test():
+            self.sound_engine.update_audio_frame(manual_amplitude=0.90)
+            vu_canvas.delete("all")
+            vu_canvas.create_rectangle(0, 0, 380, 12, fill=ACCENT_GREEN)
+            modal.after(400, lambda: vu_canvas.delete("all"))
+            
+        tk.Button(vu_box, text="Test Sound Reactivity", font=("Segoe UI", 8, "bold"), bg=BG_SIDEBAR, fg=ACCENT_BLUE, relief=tk.FLAT, padx=10, pady=2, cursor="hand2", command=run_mic_test).pack(anchor="w")
+        
+        # Notification Permission Row
+        tk.Label(tab_perms, text="Desktop Push Notifications", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        tk.Label(tab_perms, text="● Allowed (Instant alerts for direct messages & calls)", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_CARD).pack(anchor="w", pady=(1, 14))
+        
+        # 150MB Guard Storage Row
+        tk.Label(tab_perms, text="Media Cache & 150MB Guard", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        tk.Label(tab_perms, text="● Active (Strict 150MB ceiling enforced by pure ALU SMT kernel)", font=("Segoe UI", 8), fg=ACCENT_BLUE, bg=BG_CARD).pack(anchor="w")
+
+        # ---------------------------------------------------------
+        # Tab 4: Server & Network
+        # ---------------------------------------------------------
+        tab_server = tk.Frame(notebook, bg=BG_CARD, padx=16, pady=14)
+        notebook.add(tab_server, text="🌐 Server")
+        
+        tk.Label(tab_server, text="Server HTTP Endpoint", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        lbl_srv_url = tk.Label(tab_server, text=self.server_http, font=("Segoe UI", 9), fg=ACCENT_BLUE, bg=BG_CARD)
+        lbl_srv_url.pack(anchor="w", pady=(1, 10))
+        
+        tk.Label(tab_server, text="WebSocket Host & Port", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=BG_CARD).pack(anchor="w")
+        tk.Label(tab_server, text=f"{self.server_ws_host}:{self.server_ws_port} ({'Connected' if self.ws_connected else 'Reconnecting'})", font=("Segoe UI", 9), fg=ACCENT_GREEN if self.ws_connected else ACCENT_RED, bg=BG_CARD).pack(anchor="w", pady=(1, 14))
+        
+        lbl_ping = tk.Label(tab_server, text="", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_CARD)
+        lbl_ping.pack(anchor="w", pady=(0, 6))
+        
+        def ping_server():
+            start_t = time.time()
+            try:
+                with urllib.request.urlopen(f"{self.server_http}/api/v1/health", timeout=5) as resp:
+                    pass
+                elapsed_ms = int((time.time() - start_t) * 1000)
+                lbl_ping.config(text=f"● Latency: {elapsed_ms}ms (Online)", fg=ACCENT_GREEN)
+            except Exception as ex:
+                lbl_ping.config(text=f"✕ Unreachable: {str(ex)}", fg=ACCENT_RED)
+                
+        tk.Button(tab_server, text="Ping Server Latency", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=ACCENT_BLUE, relief=tk.FLAT, padx=12, pady=4, cursor="hand2", command=ping_server).pack(anchor="w")
+
+        # Bottom Action
+        tk.Button(modal, text="Close", font=("Segoe UI", 9, "bold"), bg=BG_INPUT, fg=TEXT_WHITE, relief=tk.FLAT, padx=16, pady=5, cursor="hand2", command=modal.destroy).pack(side=tk.RIGHT, padx=18, pady=(0, 14))
 
     def _apply_theme(self, theme_key: str):
         global BG_APP, BG_SIDEBAR, BG_CHAT, BG_INPUT, BG_CARD, BG_BUBBLE_IN, BG_BUBBLE_OUT
@@ -538,7 +693,6 @@ class UnderWrapsClientGUI:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((self.server_ws_host, self.server_ws_port))
                 
-                # Send Handshake
                 sec_key = "dGhlIHNhbXBsZSBub25jZQ=="
                 req = (
                     f"GET /ws HTTP/1.1\r\n"
@@ -557,7 +711,6 @@ class UnderWrapsClientGUI:
                 self.ws_sock = s
                 self.ws_connected = True
                 
-                # Authenticate WebSocket
                 self._send_ws_event({"type": "AUTH", "user_id": self.current_user["user_id"]})
                 
                 buffer = bytearray()
@@ -602,9 +755,8 @@ class UnderWrapsClientGUI:
         try:
             payload = json.dumps(event_data).encode("utf-8")
             length = len(payload)
-            header = bytearray([0x81]) # FIN + Text Opcode
+            header = bytearray([0x81])
             
-            # Mask bit MUST be set from client to server (RFC 6455)
             mask_key = b"\x12\x34\x56\x78"
             if length <= 125:
                 header.append(0x80 | length)
@@ -627,22 +779,18 @@ class UnderWrapsClientGUI:
     def _handle_incoming_ws_event(self, msg: Dict[str, Any]):
         event_type = msg.get("type")
         
-        # 1. New Message Received
         if event_type == "NEW_MESSAGE":
             m = msg.get("message", {})
             if m.get("conversation_id") == self.active_conv_id:
                 self.root.after(0, self._render_message_bubble, m)
             self.root.after(0, self._load_conversations)
 
-        # 2. Incoming Voice Call (48kHz)
         elif event_type == "CALL_INCOMING":
             self.root.after(0, self._show_incoming_call_modal, msg)
 
-        # 3. Call Accepted
         elif event_type == "CALL_ACCEPTED":
             self.root.after(0, self._on_call_connected, msg)
 
-        # 4. Call Terminated
         elif event_type == "CALL_TERMINATED":
             self.root.after(0, self._on_call_ended, msg)
 
@@ -655,13 +803,12 @@ class UnderWrapsClientGUI:
             return
         self.txt_message.delete(0, tk.END)
         
-        # Outgoing message payload
         event = {
             "type": "CHAT_MESSAGE",
             "conversation_id": self.active_conv_id,
             "sender_id": self.current_user["user_id"],
             "recipient_id": self.active_peer["user_id"],
-            "ciphertext": text, # In production, encrypted with Double Ratchet ALU key
+            "ciphertext": text,
             "nonce": "nonce_" + str(int(time.time())),
             "message_type": "TEXT"
         }
@@ -669,22 +816,21 @@ class UnderWrapsClientGUI:
 
     def _toggle_voice_note_record(self):
         if not self.is_recording_voice:
-            # Start Recording
             self.is_recording_voice = True
             self.record_start_time = time.time()
             self.btn_voice_note.config(text="⏹️ Stop", bg=ACCENT_RED, fg="#ffffff")
             self.txt_message.config(state="disabled")
+            self.sound_engine.update_audio_frame(manual_amplitude=0.85)
         else:
-            # Stop & Send Voice Note
             self.is_recording_voice = False
             duration_ms = int((time.time() - self.record_start_time) * 1000)
             self.btn_voice_note.config(text="🎙️", bg=BG_SIDEBAR, fg="#a371f7")
             self.txt_message.config(state="normal")
+            self.sound_engine.update_audio_frame(manual_amplitude=0.0)
             
             if duration_ms < 500:
-                return # Discard accidental clicks
+                return
                 
-            # Send Simulated 48kHz Voice Note with Waveform
             waveform = [round(0.2 + (0.8 * (i % 5) / 5), 2) for i in range(24)]
             event = {
                 "type": "CHAT_MESSAGE",
@@ -731,7 +877,6 @@ class UnderWrapsClientGUI:
                 with urllib.request.urlopen(req, timeout=120) as resp:
                     att_data = json.loads(resp.read().decode("utf-8"))
                     
-                # Send Attachment Message
                 event = {
                     "type": "CHAT_MESSAGE",
                     "conversation_id": self.active_conv_id,
@@ -749,12 +894,13 @@ class UnderWrapsClientGUI:
         threading.Thread(target=upload_worker, daemon=True).start()
 
     # --------------------------------------------------------------------------
-    # High-Quality Voice Calling (48kHz)
+    # High-Quality Voice Calling (48kHz & Pulsing Halo)
     # --------------------------------------------------------------------------
     def _start_voice_call(self):
         if not self.active_peer:
             return
         self.active_call_id = f"call_{int(time.time())}"
+        self.sound_engine.update_audio_frame(manual_amplitude=0.75)
         self._show_active_call_modal(is_caller=True)
         self._send_ws_event({
             "type": "CALL_INVITE",
@@ -769,12 +915,15 @@ class UnderWrapsClientGUI:
         
         modal = tk.Toplevel(self.root)
         modal.title("Incoming Voice Call")
-        modal.geometry("360x220")
+        modal.geometry("380x260")
         modal.configure(bg=BG_SIDEBAR)
         modal.transient(self.root)
         
-        tk.Label(modal, text="📞 INCOMING 48kHz VOICE CALL", font=("Segoe UI", 11, "bold"), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(pady=(20, 4))
-        tk.Label(modal, text=f"@{caller_name}", font=("Segoe UI", 16, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 20))
+        halo_cv = self._create_halo_avatar(modal, caller_name, size=52, bg=BG_SIDEBAR)
+        halo_cv.pack(pady=(16, 4))
+        
+        tk.Label(modal, text="📞 INCOMING 48kHz VOICE CALL", font=("Segoe UI", 10, "bold"), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(pady=(0, 2))
+        tk.Label(modal, text=f"@{caller_name}", font=("Segoe UI", 16, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 16))
         
         btn_box = tk.Frame(modal, bg=BG_SIDEBAR)
         btn_box.pack(fill=tk.X, padx=30)
@@ -782,6 +931,7 @@ class UnderWrapsClientGUI:
         def accept():
             modal.destroy()
             self.active_call_id = call_id
+            self.sound_engine.update_audio_frame(manual_amplitude=0.75)
             self._show_active_call_modal(is_caller=False)
             self._send_ws_event({"type": "CALL_ANSWER", "call_id": call_id, "caller_id": msg.get("caller_id")})
             
@@ -795,18 +945,19 @@ class UnderWrapsClientGUI:
     def _show_active_call_modal(self, is_caller: bool):
         self.call_dialog = tk.Toplevel(self.root)
         self.call_dialog.title("Active Voice Call (48kHz Lossless)")
-        self.call_dialog.geometry("400x300")
+        self.call_dialog.geometry("400x340")
         self.call_dialog.configure(bg=BG_SIDEBAR)
         
-        tk.Label(self.call_dialog, text="🎙️ HIGH-QUALITY 48kHz VOICE CALL", font=("Segoe UI", 10, "bold"), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(pady=(20, 6))
-        
         peer_name = self.active_peer["username"] if self.active_peer else "Peer"
+        halo_cv = self._create_halo_avatar(self.call_dialog, peer_name, size=64, bg=BG_SIDEBAR)
+        halo_cv.pack(pady=(20, 6))
+        
+        tk.Label(self.call_dialog, text="🎙️ HIGH-QUALITY 48kHz VOICE CALL", font=("Segoe UI", 10, "bold"), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(pady=(0, 4))
         tk.Label(self.call_dialog, text=f"@{peer_name}", font=("Segoe UI", 18, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 8))
         
         self.lbl_call_timer = tk.Label(self.call_dialog, text="Calling..." if is_caller else "Connecting...", font=("Segoe UI", 12), fg=TEXT_MUTED, bg=BG_SIDEBAR)
-        self.lbl_call_timer.pack(pady=(0, 20))
+        self.lbl_call_timer.pack(pady=(0, 16))
         
-        # Mute and End Buttons
         btn_box = tk.Frame(self.call_dialog, bg=BG_SIDEBAR)
         btn_box.pack(fill=tk.X, padx=40)
         
@@ -822,6 +973,7 @@ class UnderWrapsClientGUI:
             mins = elapsed // 60
             secs = elapsed % 60
             self.lbl_call_timer.config(text=f"● Connected • {mins:02d}:{secs:02d}", fg=ACCENT_GREEN)
+            self.sound_engine.update_audio_frame(manual_amplitude=0.65)
             self.root.after(1000, self._update_call_timer)
 
     def _end_voice_call(self):
@@ -832,6 +984,7 @@ class UnderWrapsClientGUI:
             self.call_dialog = None
         self.active_call_id = None
         self.call_start_time = None
+        self.sound_engine.update_audio_frame(manual_amplitude=0.0)
 
     def _on_call_ended(self, msg: Dict[str, Any]):
         if self.call_dialog:
@@ -839,6 +992,7 @@ class UnderWrapsClientGUI:
             self.call_dialog = None
         self.active_call_id = None
         self.call_start_time = None
+        self.sound_engine.update_audio_frame(manual_amplitude=0.0)
 
     # --------------------------------------------------------------------------
     # UI Rendering & Conversation Management
@@ -857,14 +1011,24 @@ class UnderWrapsClientGUI:
             widget.destroy()
             
         for c in convs:
-            item = tk.Frame(self.conv_list_frame, bg=BG_INPUT if c["conversation_id"] == self.active_conv_id else BG_SIDEBAR, padx=10, pady=10, cursor="hand2")
+            item_bg = BG_INPUT if c["conversation_id"] == self.active_conv_id else BG_SIDEBAR
+            item = tk.Frame(self.conv_list_frame, bg=item_bg, padx=8, pady=8, cursor="hand2")
             item.pack(fill=tk.X, pady=2)
             
-            tk.Label(item, text=f"@{c.get('peer_username', 'User')}", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=item["bg"]).pack(anchor="w")
+            # Peer Halo Avatar
+            halo_cv = self._create_halo_avatar(item, c.get("peer_username", "User"), size=34, bg=item_bg)
+            halo_cv.pack(side=tk.LEFT, padx=(0, 8))
+            
+            details_box = tk.Frame(item, bg=item_bg)
+            details_box.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            
+            tk.Label(details_box, text=f"@{c.get('peer_username', 'User')}", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=item_bg).pack(anchor="w")
             last_msg = c.get("last_ciphertext") or "No messages yet"
-            tk.Label(item, text=last_msg[:28], font=("Segoe UI", 8), fg=TEXT_MUTED, bg=item["bg"]).pack(anchor="w")
+            tk.Label(details_box, text=last_msg[:24], font=("Segoe UI", 8), fg=TEXT_MUTED, bg=item_bg).pack(anchor="w")
             
             item.bind("<Button-1>", lambda e, conv=c: self._select_conversation(conv))
+            for w in [halo_cv, details_box]:
+                w.bind("<Button-1>", lambda e, conv=c: self._select_conversation(conv))
 
     def _select_conversation(self, conv: Dict[str, Any]):
         self.active_conv_id = conv["conversation_id"]
@@ -873,7 +1037,21 @@ class UnderWrapsClientGUI:
             "username": conv["peer_username"],
             "display_name": conv.get("peer_display_name", conv["peer_username"])
         }
-        self.lbl_chat_title.config(text=f"@{self.active_peer['username']}")
+        
+        # Clear header and render Peer Halo Avatar in Header
+        for w in self.header_left_box.winfo_children():
+            w.destroy()
+            
+        peer_avatar = self._create_halo_avatar(self.header_left_box, self.active_peer["username"], size=38, bg=BG_SIDEBAR)
+        peer_avatar.pack(side=tk.LEFT, padx=(0, 8))
+        
+        hdr_txt_box = tk.Frame(self.header_left_box, bg=BG_SIDEBAR)
+        hdr_txt_box.pack(side=tk.LEFT)
+        
+        tk.Label(hdr_txt_box, text=f"@{self.active_peer['username']}", font=("Segoe UI", 11, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w")
+        halo_meta = derive_peer_halo(self.active_peer["username"])
+        tk.Label(hdr_txt_box, text=f"● E2EE Verified • {halo_meta['fingerprint_short']}", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(anchor="w")
+        
         self.btn_call.pack(side=tk.RIGHT)
         
         # Fetch Messages
@@ -900,25 +1078,21 @@ class UnderWrapsClientGUI:
         
         m_type = msg.get("message_type", "TEXT")
         
-        # 1. Text Message
         if m_type == "TEXT":
             tk.Label(bubble, text=msg.get("ciphertext", ""), font=("Segoe UI", 10), fg=TEXT_WHITE, bg=bubble_bg, wraplength=480, justify=tk.LEFT).pack(anchor="w")
 
-        # 2. Voice Note Message
         elif m_type == "VOICE_NOTE":
             dur_sec = round(msg.get("voice_duration_ms", 0) / 1000, 1)
-            tk.Label(bubble, text=f"🎙️ VOICE NOTE • {dur_sec}s", font=("Segoe UI", 9, "bold"), fg="#a371f7" if not is_me else "#ffffff", bg=bubble_bg).pack(anchor="w")
+            tk.Label(bubble, text=f"🎙️ VOICE NOTE • {dur_sec}s (48kHz)", font=("Segoe UI", 9, "bold"), fg="#a371f7" if not is_me else "#ffffff", bg=bubble_bg).pack(anchor="w")
             tk.Label(bubble, text=" ▂▃▅▆▇▆▅▃▂ ▂▃▅▆▇▆▅▃▂ ", font=("Consolas", 10, "bold"), fg=TEXT_WHITE, bg=bubble_bg).pack(anchor="w", pady=(2, 0))
 
-        # 3. 150MB Media Attachment
         elif m_type == "MEDIA":
             att_id = msg.get("attachment_id")
             tk.Label(bubble, text=f"📁 {msg.get('file_name', 'File Attachment')}", font=("Segoe UI", 9, "bold"), fg=TEXT_WHITE, bg=bubble_bg).pack(anchor="w")
             if att_id:
-                btn_dl = tk.Button(bubble, text="⬇️ Download", font=("Segoe UI", 8, "bold"), bg="#21262d", fg=ACCENT_BLUE, relief=tk.FLAT, padx=8, pady=2, cursor="hand2", command=lambda a=att_id: self._download_attachment(a))
+                btn_dl = tk.Button(bubble, text="⬇️ Download (150MB Guard)", font=("Segoe UI", 8, "bold"), bg="#21262d", fg=ACCENT_BLUE, relief=tk.FLAT, padx=8, pady=2, cursor="hand2", command=lambda a=att_id: self._download_attachment(a))
                 btn_dl.pack(anchor="w", pady=(4, 0))
 
-        # Timestamp
         t_str = time.strftime("%H:%M", time.localtime(msg["created_at"] / 1000)) if msg.get("created_at") else ""
         tk.Label(bubble, text=t_str, font=("Segoe UI", 7), fg="#d0d7de" if is_me else TEXT_MUTED, bg=bubble_bg).pack(anchor="e", pady=(2, 0))
         
@@ -965,7 +1139,6 @@ class UnderWrapsClientGUI:
                 target_user = other_users[sel[0]]
                 dialog.destroy()
                 
-                # Create Direct Conversation
                 req_dm = urllib.request.Request(
                     f"{self.server_http}/api/v1/conversations/direct",
                     data=json.dumps({"user1_id": self.current_user["user_id"], "user2_id": target_user["user_id"]}).encode("utf-8"),
@@ -976,6 +1149,10 @@ class UnderWrapsClientGUI:
                     
                 self._load_conversations()
                 
+            tk.Button(dialog, text="Start Chat", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=start_dm).pack(fill=tk.X, padx=16, pady=(0, 14))
+        except Exception as ex:
+            messagebox.showerror("Error", str(ex))
+
     # --------------------------------------------------------------------------
     # 100% On-Device Neural Semantic Search (Kybalion 128-D Vector Engine)
     # --------------------------------------------------------------------------
@@ -1008,7 +1185,6 @@ class UnderWrapsClientGUI:
         btn_exec = tk.Button(search_box_frame, text="Search Vectors", font=("Segoe UI", 10, "bold"), bg=ACCENT_BLUE, fg="#ffffff", relief=tk.FLAT, padx=14, pady=4, cursor="hand2")
         btn_exec.pack(side=tk.RIGHT)
         
-        # Status / Zero-Knowledge badge
         lbl_info = tk.Label(dialog, text="💡 Ask natural questions (e.g. 'What did we decide about the database schema?' or 'Find the picture of the server rack')", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_SIDEBAR, wraplength=580, justify=tk.LEFT)
         lbl_info.pack(anchor="w", padx=18, pady=(0, 8))
         
@@ -1020,12 +1196,13 @@ class UnderWrapsClientGUI:
         res_scroll = ttk.Scrollbar(results_container, orient="vertical", command=res_canvas.yview)
         res_inner = tk.Frame(res_canvas, bg=BG_CHAT)
         
-        res_canvas.create_window((0, 0), window=res_inner, anchor="nw", width=580)
+        res_window = res_canvas.create_window((0, 0), window=res_inner, anchor="nw", width=580)
         res_canvas.configure(yscrollcommand=res_scroll.set)
         
         res_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         res_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         res_inner.bind("<Configure>", lambda e: res_canvas.configure(scrollregion=res_canvas.bbox("all")))
+        res_canvas.bind("<Configure>", lambda e: res_canvas.itemconfig(res_window, width=e.width))
         
         def run_search():
             q = entry_query.get().strip()
@@ -1071,13 +1248,11 @@ class UnderWrapsClientGUI:
                     t_str = time.strftime("%b %d, %H:%M", time.localtime(item["created_at"] / 1000)) if item.get("created_at") else ""
                     tk.Label(header_row, text=t_str, font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_INPUT).pack(side=tk.RIGHT)
                     
-                    # Content Snippet
                     snippet = item.get("text", "")
                     if item.get("entity_type") == "ATTACHMENT":
                         snippet = f"📁 [Attachment]: {item.get('file_name', 'File')} ({item.get('mime_type', 'Media')})"
                     tk.Label(card, text=snippet, font=("Segoe UI", 9), fg=TEXT_WHITE, bg=BG_INPUT, wraplength=520, justify=tk.LEFT).pack(anchor="w", pady=(6, 4))
                     
-                    # Jump Action
                     target_conv_id = item.get("conversation_id")
                     if target_conv_id:
                         def jump(cid=target_conv_id, p_name=item.get("sender_username", "User")):

@@ -2,24 +2,46 @@
   <img src="assets/logo/underwraps_logo.svg" alt="UnderWraps Sovereign Logo" width="128" height="128">
 </p>
 
-# 🛡️ UnderWraps — Sovereign Private Messenger & Server Node (v2.0)
+# 🛡️ UnderWraps — Sovereign Private Messenger & Server Node (v2.1)
 
-**The Ultimate Sovereign Communication Suite powered by Pure ALU, Kybalion DB & Live Shaders**
+**The Ultimate Sovereign Communication Suite powered by Pure ALU, Kybalion DB, Sound-Reactive Shaders & Cryptographic Halos**
 
 [![Pure ALU](https://img.shields.io/badge/Language-Pure_ALU-blue.svg)](https://github.com/Alu6hel/alu-language)
 [![Database](https://img.shields.io/badge/Database-Kybalion_DB-purple.svg)](https://github.com/Alu6hel/Kybalion)
 [![Media Guard](https://img.shields.io/badge/Strict_Limit-150_MB-brightgreen.svg)](src/alu/file_guard.alu)
 [![Neural Search](https://img.shields.io/badge/Neural_Search-100%25_On--Device_128--D-violet.svg)](#-100-on-device-neural-semantic-search)
-[![Live Themes](https://img.shields.io/badge/Live_Themes-3_Dynamic_Atmospheres-orange.svg)](#-3-live-dynamic-themes)
+[![Sound Reactive](https://img.shields.io/badge/Themes-Sound--Reactive_Shaders-orange.svg)](#-sound-reactive-live-themes)
+[![Peer Halo](https://img.shields.io/badge/Identity-Cryptographic_Peer_Halo-cyan.svg)](#-cryptographic-peer-color-halo)
 [![License](https://img.shields.io/badge/Charter-Alumungandr_Master_Charter-emerald.svg)](ALUMUNGANDR_MASTER_LICENSE.md)
 
 ---
 
 ## 🌟 Overview
 
-**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring custom username & password registration, optional email 2FA, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, a strictly enforced **150 MB** media attachment ceiling, and **100% On-Device Neural Semantic Search** powered by the **Kybalion 128-D Vector Engine**.
+**UnderWraps** is a privacy-first, sovereign messaging ecosystem featuring custom username & password registration, optional email 2FA, End-to-End Encryption (E2EE), high-fidelity 48kHz voice calls, in-app voice notes with waveform visualization, a strictly enforced **150 MB** media attachment ceiling, **100% On-Device Neural Semantic Search** powered by the **Kybalion 128-D Vector Engine**, **Sound-Reactive Live Shaders**, and **Cryptographic Peer Color Halos**.
 
 The server operates as **both an installable application with a visual control dashboard on Windows & Android** and a background daemon powered by the **Kybalion Multi-Modal Database Engine**.
+
+---
+
+## 🎵 Sound-Reactive Live Themes
+
+Connects the 3 Live Dynamic Themes (*Dark Galaxy Field*, *Inverted Stars*, and *Cyber Aurora Matrix*) directly to the real-time 48kHz audio DSP engine:
+
+- **🌌 Dark Galaxy Field**: Starfield velocity accelerates with voice intensity up to $5\times$, galactic nebulae expand and pulse to bass harmonics, and constellation bonds glow.
+- **✨ Inverted Stars**: Negative gravitational wave rings pulse outward at frequency peaks, star nodes vibrate, and dark constellation connections intensify.
+- **⚡ Cyber Aurora Matrix**: Aurora plasma ribbon harmonics pulse vertically with wave amplitude, cyber grid lines glow and perspective-shift, and quantum plasma sparks burst upward based on sound frequency amplitude.
+- **Formally Verified in ALU**: Guaranteed bounded outputs with SMT pre/post conditions (`src/alu/sound_reactive_theme.alu`).
+
+---
+
+## 🔮 Cryptographic Peer Color Halo
+
+Every user has a unique cryptographic public key fingerprint. UnderWraps deterministically converts this fingerprint into a unique glowing ambient gradient halo around their profile avatar and chat header:
+
+- **Zero-Trust Visual Identity**: Instantly recognize verified peers visually without relying on spoofable display names.
+- **SMT-Verified High Contrast**: Mathematical bounds guarantee minimum saturation ($\ge 70\%$) and lightness ($45\% - 65\%$) for high contrast on both dark and light themes (`src/alu/crypto_peer_halo.alu`).
+- **Full Platform Parity**: Rendered in Desktop Tkinter, Android WebView, and Web PWA via CSS linear/radial gradients.
 
 ---
 
@@ -34,21 +56,12 @@ UnderWraps features zero-knowledge natural language semantic search running enti
 
 ---
 
-## 🌌 3 Live Dynamic Atmospheric Themes
+## 📱 Permissions, Responsiveness & Settings
 
-UnderWraps features three high-performance live animated atmospheric shaders rendered at 60 FPS:
-
-1. **🌌 Dark Galaxy Field (Live)**: Deep space void with drifting stellar constellations, multi-layered parallax stars, and glowing nebula clouds.
-2. **✨ Inverted Stars (Live)**: Luminous astral daylight canvas with obsidian star nodes, negative starlight rays, and expanding gravitational wave rings.
-3. **⚡ Cyber Aurora Matrix (Live)**: Deep obsidian matrix with procedural multi-harmonic cyan/emerald aurora plasma ribbons, digital perspective horizon grid, and quantum plasma sparks.
-
----
-
-## 🔗 Fully Automatic Zero-Friction Connectivity
-
-- **Auto-Discovery & Dynamic Host**: Connect clients across Android, Windows, and Web PWA by inputting any server IP, domain, or localhost.
-- **Resilient Auto-Reconnect**: Full-duplex WebSocket router automatically detects network state changes and re-establishes authenticated sessions seamlessly.
-- **P2P Voice & Signaling**: Lossless 48kHz voice calls utilize automated WebRTC SDP and ICE signaling with zero complex firewall configuration.
+- **Android Native Manifest**: Pre-configured with granular permissions (`RECORD_AUDIO`, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE_MICROPHONE`, `READ_MEDIA_*`).
+- **Web PWA Permissions**: Dynamic runtime permission handling with browser `getUserMedia` and `Notification.requestPermission` triggers.
+- **Responsive Mobile Drawer**: Sidebar seamlessly collapses into a touch-friendly slide-over navigation drawer on mobile viewports ($\le 768\mathrm{px}$).
+- **Rich Settings Dashboard**: Multi-tab interface for Themes, Sound-Reactive Sensitivity, Peer Halo Toggles, Email 2FA, Hardware Permissions, and Server Health Ping.
 
 ---
 
@@ -57,6 +70,8 @@ UnderWraps features three high-performance live animated atmospheric shaders ren
 | Feature | Architecture & Implementation |
 |---|---|
 | **🧠 100% On-Device Neural Search** | Natural language 128-D vector queries across messages and 150MB media with zero cloud leaks (`src/alu/semantic_vector_engine.alu` & `src/database/kybalion_adapter.py`). |
+| **🎵 Sound-Reactive Shaders** | Live audio frequency modulation connecting 48kHz voice notes and calls to galaxy, starfield, and aurora shaders (`src/alu/sound_reactive_theme.alu`). |
+| **🔮 Cryptographic Peer Halo** | SMT-verified deterministic ambient color halos derived from SHA-256 public key digests (`src/alu/crypto_peer_halo.alu` & `src/crypto/peer_halo.py`). |
 | **🔒 Custom Username & Auth** | Users register with custom usernames & passwords, salted & derived with Argon2id / PBKDF2-SHA512 in Pure ALU (`src/alu/crypto_vault.alu`). |
 | **🛡️ Optional Email 2FA** | Completely optional 2-Factor Authentication toggleable in Settings. Generates 6-digit cryptographic OTP challenges. |
 | **📦 Strict 150MB Media Ceiling** | Formally verified with Microsoft Z3 SMT bounds proving (`src/alu/file_guard.alu`). Strict multi-layer stream rejection at $157,286,400$ bytes. |
@@ -64,7 +79,6 @@ UnderWraps features three high-performance live animated atmospheric shaders ren
 | **🎵 Interactive Voice Notes** | In-app audio recording with live level meters, downsampled waveform preview, and inline chat playback. |
 | **🗄️ Kybalion DB Core** | Multi-modal embedded database engine with MVCC snapshot isolation, WAL crash recovery, and 128-D neural vector search (`src/database/`). |
 | **🖥️ Dual-Purpose Server App** | Installable server app with rich telemetry, QPS graphs, user & session inspector, 150MB storage vault, and KQL query studio. |
-| **📱 Android 24/7 Hosting** | Persistent Android Server with `ServerForegroundService` and wake-lock resilience. |
 
 ---
 
@@ -96,41 +110,53 @@ python test_all.py
 
 ```
 UnderWraps/
-├── alu.toml                    # ALU Ecosystem Manifest
+├── alu.toml                    # ALU Ecosystem Manifest (v2.1.0)
 ├── settings.json               # System configuration & themes
+├── CHECKSUMS.txt               # SHA-256 Master Cryptographic Hashes
+├── RELEASE_MANIFEST.json       # Release Target Artifact Specifications
 ├── run_server.py               # Master Server Launcher (GUI & Daemon)
 ├── run_client.py               # Master Client Launcher
-├── test_all.py                 # Automated Test Runner (100% Pass)
+├── test_all.py                 # Automated Test Runner (100% Pass Rate)
 ├── src/
 │   ├── alu/                    # Pure ALU Z3-Verified Systems Core
+│   │   ├── sound_reactive_theme.alu # Sound-Reactive Live Shaders Engine
+│   │   ├── crypto_peer_halo.alu     # Cryptographic Peer Color Halo Generator
+│   │   ├── semantic_vector_engine.alu # 128-D Neural Vector Kernel
 │   │   ├── file_guard.alu      # 150MB Strict Media Ceiling & Stream Abort
 │   │   ├── crypto_vault.alu    # Password Derivation, 2FA OTP & AES-256-GCM
 │   │   ├── voice_engine.alu    # 48kHz Audio DSP & Jitter Buffering
 │   │   └── underwraps_core.alu # Master Protocol Coordinator
+│   ├── crypto/                 # Cryptographic Derivation Adapters
+│   │   └── peer_halo.py        # Python Peer Halo Color Stop Generator
 │   ├── database/               # Kybalion Database Engine
-│   │   ├── schema.kql          # Kybalion Query Language Relational Schema
-│   │   └── kybalion_adapter.py # Embedded DB Engine & WAL Coordinator
+│   │   ├── schema.kql          # Kybalion Relational & 128-D Vector Schema
+│   │   └── kybalion_adapter.py # Embedded DB Engine & Vector Search
 │   ├── server/                 # Multi-Threaded Server Daemon
 │   │   └── server_engine.py    # REST APIs, WebSockets & 150MB Streamer
 │   ├── server_ui/              # Windows Server Management Node
 │   │   └── desktop_server_app.py # Fluent Dark Server Dashboard
 │   └── client/                 # Windows Client Messenger
-│       └── desktop_client_app.py # Sleek E2EE Messenger with 48kHz Calls
-├── web/                        # Offline-Ready Web PWA Client
-│   ├── index.html              # Responsive Web Interface
-│   ├── style.css               # Fluent Dark Stylesheet
-│   ├── app.js                  # PWA Controller, WebRTC & MediaRecorder
+│       ├── desktop_client_app.py # E2EE Messenger with Halo Avatars & Shaders
+│       └── sound_reactive_engine.py # Audio DSP Amplitude Modulation Monitor
+├── web/                        # Offline-Ready Responsive Web PWA Client
+│   ├── index.html              # Responsive Web Interface with Mobile Drawer
+│   ├── style.css               # Fluent Dark Stylesheet & Halo CSS Variables
+│   ├── app.js                  # PWA Controller, Web Audio DSP & Halos
 │   ├── manifest.json           # Web App Manifest
 │   └── sw.js                   # Service Worker Cache
 ├── android/                    # Android Deployment
 │   ├── server_app/             # 24/7 Foreground Server Service
-│   ├── client_app/             # Android Messaging App
+│   ├── client_app/             # Android Messaging App & Permissions Manifest
 │   └── jni_bridge.cpp          # NDK JNI Bridge to Pure ALU Core
-└── tests/                      # Automated Verification Suite
-    ├── test_file_guard.py      # Strict 150MB Boundary Verifier
-    ├── test_crypto.py          # Password Hash & 2FA Token Lifecycle
+└── tests/                      # Automated Verification Suite (27 Tests)
+    ├── test_sound_reactive_themes.py # Sound-Reactive Audio DSP & SMT Bounds
+    ├── test_crypto_peer_halo.py     # Halo Determinism & Contrast Invariants
+    ├── test_settings_and_permissions.py # Settings & Permissions Verification
+    ├── test_semantic_search.py     # 128-D Vector Retrieval & Multi-Tenant Privacy
+    ├── test_file_guard.py          # Strict 150MB Boundary Verifier
+    ├── test_crypto.py              # Password Hash & 2FA Token Lifecycle
     ├── test_kybalion_integration.py # DB Engine Schemas & CRUD
-    ├── test_voice_engine.py    # 48kHz DSP & Waveform Extraction
+    ├── test_voice_engine.py        # 48kHz DSP & Waveform Extraction
     └── test_e2e_messaging_and_calling.py # Full Multi-Client E2E Test
 ```
 

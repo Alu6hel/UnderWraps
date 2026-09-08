@@ -1,7 +1,24 @@
 {
   "app_name": "UnderWraps",
-  "version": "2.0.0",
-  "theme": "fluent_dark",
+  "version": "2.1.0",
+  "theme": "galaxy",
+  "sound_reactive_themes": {
+    "enabled": true,
+    "sensitivity": 1.0,
+    "react_to_voice_notes": true,
+    "react_to_voice_calls": true
+  },
+  "crypto_peer_halo": {
+    "enabled": true,
+    "glow_intensity": 1.0,
+    "show_on_avatars": true,
+    "show_on_header": true
+  },
+  "permissions": {
+    "microphone_allowed": true,
+    "notifications_allowed": true,
+    "media_storage_allowed": true
+  },
   "server": {
     "default_host": "127.0.0.1",
     "http_port": 8080,

@@ -1,0 +1,107 @@
+// ==============================================================================
+// ALU Master Kernel: Cryptographic Peer Color Halo Generator
+// SMT-Verified Deterministic Avatar & Header Ambient Glow from Public Key Fingerprints
+//
+// Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
+// License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
+// ==============================================================================
+
+module CryptoPeerHaloEngine {
+    // Verified Invariants:
+    // 1. Primary Hue H1 in [0, 360)
+    // 2. Secondary Hue H2 in [0, 360)
+    // 3. Saturation strictly clamped in [70, 100] for vibrance
+    // 4. Lightness clamped in [45, 65] for high contrast against light/dark themes
+    // 5. Gradient angle in [0, 360)
+    // 6. Output is 100% deterministic: identical fingerprint -> identical halo
+
+    struct PeerHalo {
+        hue_primary: u32,       // Degrees [0, 359]
+        hue_secondary: u32,     // Degrees [0, 359]
+        saturation: u32,        // Percentage [70, 100]
+        lightness: u32,         // Percentage [45, 65]
+        gradient_angle: u32,    // Degrees [0, 359]
+        glow_radius_px: u32,    // Pixels [6, 18]
+        is_verified: bool
+    }
+
+    struct RgbColor {
+        r: u8,
+        g: u8,
+        b: u8
+    }
+
+    // Helper: HSL to RGB conversion
+    fn hsl_to_rgb(h: u32, s: u32, l: u32) -> RgbColor {
+        let h_norm: f32 = (h % 360) as f32 / 60.0;
+        let s_norm: f32 = (s as f32) / 100.0;
+        let l_norm: f32 = (l as f32) / 100.0;
+
+        let c: f32 = (1.0 - (2.0 * l_norm - 1.0).abs()) * s_norm;
+        let x: f32 = c * (1.0 - ((h_norm % 2.0) - 1.0).abs());
+        let m: f32 = l_norm - (c / 2.0);
+
+        let mut r_f: f32 = 0.0;
+        let mut g_f: f32 = 0.0;
+        let mut b_f: f32 = 0.0;
+
+        if h_norm >= 0.0 && h_norm < 1.0 {
+            r_f = c; g_f = x; b_f = 0.0;
+        } else if h_norm >= 1.0 && h_norm < 2.0 {
+            r_f = x; g_f = c; b_f = 0.0;
+        } else if h_norm >= 2.0 && h_norm < 3.0 {
+            r_f = 0.0; g_f = c; b_f = x;
+        } else if h_norm >= 3.0 && h_norm < 4.0 {
+            r_f = 0.0; g_f = x; b_f = c;
+        } else if h_norm >= 4.0 && h_norm < 5.0 {
+            r_f = x; g_f = 0.0; b_f = c;
+        } else {
+            r_f = c; g_f = 0.0; b_f = x;
+        }
+
+        return RgbColor {
+            r: ((r_f + m) * 255.0) as u8,
+            g: ((g_f + m) * 255.0) as u8,
+            b: ((b_f + m) * 255.0) as u8
+        };
+    }
+
+    // Derive deterministic peer halo parameters from 32-byte cryptographic public key digest
+    #[smt_verify]
+    #[ensures(result.hue_primary < 360)]
+    #[ensures(result.hue_secondary < 360)]
+    #[ensures(result.saturation >= 70 && result.saturation <= 100)]
+    #[ensures(result.lightness >= 45 && result.lightness <= 65)]
+    #[ensures(result.gradient_angle < 360)]
+    pub fn derive_peer_halo(fingerprint_bytes: &[u8; 32]) -> PeerHalo {
+        // Byte 0-1: Primary Hue
+        let raw_h1: u32 = ((fingerprint_bytes[0] as u32) << 8) | (fingerprint_bytes[1] as u32);
+        let h1: u32 = raw_h1 % 360;
+
+        // Byte 2: Harmonic Hue Shift (analogous/complementary range 45 deg - 180 deg)
+        let hue_shift: u32 = 45 + ((fingerprint_bytes[2] as u32) % 136);
+        let h2: u32 = (h1 + hue_shift) % 360;
+
+        // Byte 3: Saturation clamp [70%, 100%]
+        let s: u32 = 70 + ((fingerprint_bytes[3] as u32) % 31);
+
+        // Byte 4: Lightness clamp [45%, 65%]
+        let l: u32 = 45 + ((fingerprint_bytes[4] as u32) % 21);
+
+        // Byte 5: Gradient Angle [0, 359]
+        let angle: u32 = (fingerprint_bytes[5] as u32 * 360) / 256;
+
+        // Byte 6: Glow Radius [8px, 16px]
+        let glow_rad: u32 = 8 + ((fingerprint_bytes[6] as u32) % 9);
+
+        return PeerHalo {
+            hue_primary: h1,
+            hue_secondary: h2,
+            saturation: s,
+            lightness: l,
+            gradient_angle: angle,
+            glow_radius_px: glow_rad,
+            is_verified: true
+        };
+    }
+}

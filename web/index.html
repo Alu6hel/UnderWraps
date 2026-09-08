@@ -2,14 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>UnderWraps — Sovereign Private Messenger</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d1117">
     <link rel="stylesheet" href="style.css">
-<body>
-    <!-- Live Background Dynamic Particle / Shader Canvas -->
+</head>
+<body data-theme="galaxy">
+    <!-- Live Background Dynamic Sound-Reactive Particle / Shader Canvas -->
     <canvas id="live-theme-canvas"></canvas>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="mobile-sidebar-backdrop" class="sidebar-backdrop hidden" onclick="closeMobileSidebar()"></div>
 
     <!-- 1. Authentication Screen -->
     <div id="auth-screen" class="screen-container">
@@ -79,39 +83,50 @@
     <!-- 2. Main Messenger Screen -->
     <div id="chat-screen" class="screen-container hidden">
         <div class="messenger-layout">
-            <!-- Sidebar -->
-            <aside class="sidebar">
+            <!-- Sidebar / Mobile Drawer -->
+            <aside id="main-sidebar" class="sidebar">
                 <div class="user-profile-bar">
                     <div class="profile-info">
-                        <span class="user-avatar">👤</span>
+                        <div id="my-avatar-halo" class="avatar-halo-wrapper">
+                            <span class="user-avatar">👤</span>
+                        </div>
                         <div class="user-details">
                             <strong id="my-username">@user</strong>
                             <span class="status-indicator">● Online (E2EE Active)</span>
                         </div>
                     </div>
-                    <button class="icon-btn" title="Settings" onclick="openSettings()">⚙️</button>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="icon-btn" title="Settings & Permissions" onclick="openSettings()">⚙️</button>
+                        <button class="icon-btn mobile-only-close" onclick="closeMobileSidebar()" title="Close Menu">✕</button>
+                    </div>
                 </div>
 
                 <div class="sidebar-actions" style="display: flex; gap: 8px; padding: 10px 12px;">
                     <button class="btn-new-chat" style="margin: 0; flex: 1;" onclick="openNewChatModal()">➕ New DM</button>
-                    <button class="btn-new-chat" style="margin: 0; flex: 1; background-color: #1a2736;" onclick="openNeuralSearchModal()">🧠 Neural Search</button>
+                    <button class="btn-new-chat" style="margin: 0; flex: 1; background-color: var(--bg-input);" onclick="openNeuralSearchModal()">🧠 Neural Search</button>
                 </div>
 
                 <div id="conversation-list" class="conversation-list">
-                    <!-- Dynamic conversations loaded here -->
+                    <!-- Dynamic conversations loaded here with cryptographic peer halos -->
                 </div>
             </aside>
 
             <!-- Active Chat Area -->
             <main class="chat-area">
                 <header class="chat-header">
-                    <div class="chat-peer-info">
-                        <h2 id="chat-peer-name">Select a conversation</h2>
-                        <span id="chat-peer-status" class="peer-status"></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button id="btn-mobile-sidebar-toggle" class="icon-btn mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Sidebar">☰</button>
+                        <div id="peer-avatar-halo" class="avatar-halo-wrapper hidden" style="width: 38px; height: 38px;">
+                            <span class="user-avatar" style="font-size: 18px;">👤</span>
+                        </div>
+                        <div class="chat-peer-info">
+                            <h2 id="chat-peer-name">Select a conversation</h2>
+                            <span id="chat-peer-status" class="peer-status"></span>
+                        </div>
                     </div>
-                    <div class="chat-header-actions" style="display: flex; gap: 8px;">
-                        <button class="icon-btn" title="Search Chat" onclick="openNeuralSearchModal()" style="font-size: 16px;">🔍</button>
-                        <button id="btn-start-call" class="btn-call hidden" onclick="startVoiceCall()">📞 Start Voice Call (48kHz)</button>
+                    <div class="chat-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                        <button class="icon-btn" title="Neural Search" onclick="openNeuralSearchModal()" style="font-size: 16px;">🔍</button>
+                        <button id="btn-start-call" class="btn-call hidden" onclick="startVoiceCall()">📞 Call (48kHz)</button>
                     </div>
                 </header>
 
@@ -136,7 +151,9 @@
     <!-- 3. Active Voice Call Overlay -->
     <div id="voice-call-overlay" class="call-overlay hidden">
         <div class="call-card">
-            <span class="call-icon">🎙️</span>
+            <div id="call-peer-halo" class="avatar-halo-wrapper pulsing-halo" style="width: 72px; height: 72px; margin: 0 auto 14px auto;">
+                <span style="font-size: 36px; line-height: 72px;">🎙️</span>
+            </div>
             <h3>HIGH-QUALITY 48kHz VOICE CALL</h3>
             <h1 id="call-peer-name">@peer</h1>
             <p id="call-timer">Calling...</p>
@@ -146,32 +163,156 @@
         </div>
     </div>
 
-    <!-- 4. Settings Modal -->
+    <!-- 4. Settings & Permissions Modal (Multi-Tab) -->
     <div id="modal-settings" class="modal-overlay hidden">
-        <div class="modal-card">
-            <h3>⚙️ Account & Security Settings</h3>
+        <div class="modal-card settings-modal-card">
+            <div class="settings-modal-header">
+                <h3>⚙️ Settings & System Permissions</h3>
+                <button class="icon-btn" onclick="closeSettings()" style="font-size: 18px;">✕</button>
+            </div>
             
-            <div class="setting-row" style="margin-bottom: 16px;">
-                <div>
-                    <strong>Live Dynamic Theme</strong>
-                    <p class="setting-desc">Choose from high-performance live animated atmospheric shaders.</p>
-                </div>
-                <select id="theme-selector" class="theme-dropdown" onchange="changeLiveTheme(this.value)">
-                    <option value="galaxy">🌌 Dark Galaxy Field (Live)</option>
-                    <option value="inverted">✨ Inverted Stars (Live)</option>
-                    <option value="aurora">⚡ Cyber Aurora Matrix (Live)</option>
-                </select>
+            <!-- Settings Tabs -->
+            <div class="settings-tabs">
+                <button id="tab-btn-themes" class="settings-tab-btn active" onclick="switchSettingsTab('themes')">🎨 Themes</button>
+                <button id="tab-btn-identity" class="settings-tab-btn" onclick="switchSettingsTab('identity')">🔒 Identity & Halo</button>
+                <button id="tab-btn-perms" class="settings-tab-btn" onclick="switchSettingsTab('permissions')">🎙️ Permissions</button>
+                <button id="tab-btn-server" class="settings-tab-btn" onclick="switchSettingsTab('server')">🌐 Server</button>
             </div>
 
-            <div class="setting-row" style="margin-bottom: 16px;">
-                <div>
-                    <strong>Two-Factor Authentication (Email 2FA)</strong>
-                    <p class="setting-desc">Require a 6-digit OTP verification code upon every login.</p>
+            <div class="settings-tab-content">
+                <!-- Tab 1: Themes & Sound Reactivity -->
+                <div id="settings-tab-themes" class="settings-panel">
+                    <div class="setting-row">
+                        <div>
+                            <strong>Live Dynamic Theme</strong>
+                            <p class="setting-desc">GPU/Canvas animated atmospheric shaders.</p>
+                        </div>
+                        <select id="theme-selector" class="theme-dropdown" onchange="changeLiveTheme(this.value)">
+                            <option value="galaxy">🌌 Dark Galaxy Field (Live)</option>
+                            <option value="inverted">✨ Inverted Stars (Live)</option>
+                            <option value="aurora">⚡ Cyber Aurora Matrix (Live)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Sound-Reactive Shaders</strong>
+                            <p class="setting-desc">Live particles, gravitational waves & aurora ribbons pulse to 48kHz voice amplitude.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-sound-reactive" checked onchange="toggleSoundReactivity(this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Audio Reactivity Sensitivity (<span id="lbl-sens-val">1.0x</span>)</strong>
+                            <p class="setting-desc">Adjust how vigorously themes react to voice volume.</p>
+                        </div>
+                        <input type="range" id="range-sound-sens" min="0.5" max="2.5" step="0.1" value="1.0" class="sens-slider" oninput="updateSensitivity(this.value)">
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Cryptographic Peer Color Halo</strong>
+                            <p class="setting-desc">Render deterministic ambient gradient glows around verified peer avatars.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chk-peer-halo" checked onchange="togglePeerHalo(this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                 </div>
-                <button id="btn-toggle-2fa" class="btn-primary" onclick="toggle2FA()">Enable 2FA</button>
+
+                <!-- Tab 2: Identity & Halo -->
+                <div id="settings-tab-identity" class="settings-panel hidden">
+                    <div class="setting-row">
+                        <div>
+                            <strong>Two-Factor Authentication (Email 2FA)</strong>
+                            <p class="setting-desc">Require a 6-digit OTP verification code upon every login.</p>
+                        </div>
+                        <button id="btn-toggle-2fa" class="btn-primary" style="width: auto; padding: 6px 14px;" onclick="toggle2FA()">Enable 2FA</button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Cryptographic Public Key Fingerprint</strong>
+                            <p class="setting-desc">Deterministic 256-bit identity digest.</p>
+                        </div>
+                        <div id="user-fp-box" class="fingerprint-badge">SHA256:Loading...</div>
+                    </div>
+
+                    <div class="setting-row" style="border-bottom: none;">
+                        <div>
+                            <strong>Your Deterministic Peer Color Halo</strong>
+                            <p class="setting-desc">Your unique ambient visual signature derived from your public key.</p>
+                        </div>
+                        <div class="halo-preview-container">
+                            <div id="my-halo-preview-ring" class="avatar-halo-wrapper" style="width: 54px; height: 54px;">
+                                <span style="font-size: 26px; line-height: 54px;">👤</span>
+                            </div>
+                            <div id="my-halo-color-tags" class="halo-color-tags">
+                                <span class="color-pill" id="pill-c1">#00f5d4</span>
+                                <span class="color-pill" id="pill-c2">#7b2cbf</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Permissions & Hardware -->
+                <div id="settings-tab-permissions" class="settings-panel hidden">
+                    <div class="setting-row">
+                        <div>
+                            <strong>Microphone Permission (48kHz Voice)</strong>
+                            <p class="setting-desc">Required for voice notes, 48kHz calls & sound-reactive shaders.</p>
+                            <span id="badge-perm-mic" class="perm-badge perm-granted">● Checking...</span>
+                        </div>
+                        <button class="btn-secondary" style="width: auto; padding: 6px 12px;" onclick="requestMicPermission()">Request Access</button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Live Mic VU Meter & Audio Test</strong>
+                            <p class="setting-desc">Speak to test audio sensitivity in real-time.</p>
+                        </div>
+                        <div class="vu-meter-bar">
+                            <div id="vu-meter-fill" class="vu-meter-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>Desktop Push Notifications</strong>
+                            <p class="setting-desc">Instant alerts for incoming encrypted messages and voice calls.</p>
+                            <span id="badge-perm-notif" class="perm-badge perm-granted">● Checking...</span>
+                        </div>
+                        <button class="btn-secondary" style="width: auto; padding: 6px 12px;" onclick="requestNotificationPermission()">Enable Notifications</button>
+                    </div>
+
+                    <div class="setting-row" style="border-bottom: none;">
+                        <div>
+                            <strong>150MB Media Attachment Storage</strong>
+                            <p class="setting-desc">Secure local cache with SMT-verified 150MB ceiling.</p>
+                        </div>
+                        <span class="perm-badge perm-granted">● Active (150MB Guard)</span>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Server Connection -->
+                <div id="settings-tab-server" class="settings-panel hidden">
+                    <div class="setting-row">
+                        <label style="font-size: 12px; font-weight: 600;">Server HTTP Base URL</label>
+                        <input type="text" id="settings-server-url" value="http://127.0.0.1:8080" style="margin-top: 6px;">
+                    </div>
+                    <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: none;">
+                        <button class="btn-primary" style="width: auto; padding: 6px 14px;" onclick="testServerPing()">Test Server Latency</button>
+                        <span id="server-ping-result" style="font-size: 11px; color: var(--accent-green);"></span>
+                    </div>
+                </div>
             </div>
-            
-            <div class="modal-actions">
+
+            <div class="modal-actions" style="margin-top: 18px;">
                 <button type="button" class="btn-secondary" onclick="closeSettings()">Close</button>
             </div>
         </div>
