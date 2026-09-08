@@ -375,10 +375,14 @@ function initWebSocket() {
                 new Notification(`UnderWraps: @${msg.message.sender_username || 'Peer'}`, {
                     body: msg.message.ciphertext ? msg.message.ciphertext.slice(0, 80) : 'New encrypted message',
                     icon: '../assets/logo/underwraps_logo.svg'
-                });
-            }
-        } else if (msg.type === 'CALL_INCOMING') {
+        } else if (msg.type === 'CALL_OFFER' || msg.type === 'CALL_INCOMING') {
             showIncomingCall(msg);
+        } else if (msg.type === 'CALL_ANSWER') {
+            handleCallAnswer(msg);
+        } else if (msg.type === 'ICE_CANDIDATE') {
+            handleIceCandidate(msg);
+        } else if (msg.type === 'CALL_HANGUP') {
+            handleCallHangup(msg);
         }
     };
 }
@@ -667,37 +671,294 @@ async function toggleVoiceRecording() {
     }
 }
 
-// 9. Voice Calling (48kHz WebRTC)
-function startVoiceCall() {
-    if (!activePeer) return;
+// ==============================================================================
+// 9. Full 48kHz WebRTC Voice Calling Engine
+// ==============================================================================
+const RTC_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+
+let rtcPeerConnection = null;
+let localMediaStream = null;
+let remoteAudioElement = null;
+let currentActiveCallId = null;
+let pendingIncomingCall = null;
+let callTimerInterval = null;
+let callStartTimestamp = 0;
+
+async function setupLocalAudioStream() {
+    if (localMediaStream) return localMediaStream;
+    try {
+        localMediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                sampleRate: 48000,
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            },
+            video: false
+        });
+
+        initWebAudioContext();
+        if (audioCtx) {
+            const micSource = audioCtx.createMediaStreamSource(localMediaStream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            micSource.connect(analyser);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            const checkMicEnergy = () => {
+                if (!localMediaStream) return;
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
+                if (avg > 10) {
+                    targetAudioAmplitude = Math.min(1.0, (avg / 128.0) * soundSensitivity);
+                }
+                requestAnimationFrame(checkMicEnergy);
+            };
+            checkMicEnergy();
+        }
+        return localMediaStream;
+    } catch (err) {
+        console.warn('Microphone access error:', err);
+        return null;
+    }
+}
+
+async function startVoiceCall() {
+    if (!activePeer || !ws || ws.readyState !== WebSocket.OPEN) return;
     initWebAudioContext();
     
+    currentActiveCallId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     document.getElementById('call-peer-name').innerText = `@${activePeer.username}`;
+    document.getElementById('call-timer').innerText = 'Calling (48kHz Hi-Fi)...';
+    document.getElementById('call-controls-active').classList.remove('hidden');
+    document.getElementById('call-controls-incoming').classList.add('hidden');
+    
     const callHalo = document.getElementById('call-peer-halo');
     if (callHalo && peerHaloEnabled) {
         const halo = derivePeerHalo(activePeer.username);
         callHalo.style.background = halo.linearGradient;
         callHalo.style.boxShadow = halo.boxShadow;
     }
-    
     document.getElementById('voice-call-overlay').classList.remove('hidden');
 
+    const stream = await setupLocalAudioStream();
+    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+
+    if (stream) {
+        stream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, stream));
+    }
+
+    rtcPeerConnection.onicecandidate = (event) => {
+        if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'ICE_CANDIDATE',
+                candidate: event.candidate,
+                recipient_id: activePeer.user_id,
+                call_id: currentActiveCallId
+            }));
+        }
+    };
+
+    rtcPeerConnection.ontrack = (event) => {
+        attachRemoteAudio(event.streams[0]);
+    };
+
+    const offer = await rtcPeerConnection.createOffer();
+    await rtcPeerConnection.setLocalDescription(offer);
+
     ws.send(JSON.stringify({
-        type: 'CALL_INVITE',
-        call_id: `call_${Date.now()}`,
+        type: 'CALL_OFFER',
+        sdp: offer,
+        call_id: currentActiveCallId,
+        recipient_id: activePeer.user_id,
         caller_id: currentUser.user_id,
-        callee_id: activePeer.user_id
+        caller_username: currentUser.username
     }));
 }
 
-function endVoiceCall() {
-    document.getElementById('voice-call-overlay').classList.add('hidden');
-    targetAudioAmplitude = 0.0;
+function showIncomingCall(msg) {
+    pendingIncomingCall = msg;
+    currentActiveCallId = msg.call_id;
+    
+    const callerName = msg.caller_username || 'Peer';
+    document.getElementById('call-peer-name').innerText = `@${callerName}`;
+    document.getElementById('call-timer').innerText = 'Incoming 48kHz Voice Call...';
+    document.getElementById('call-controls-active').classList.add('hidden');
+    document.getElementById('call-controls-incoming').classList.remove('hidden');
+    
+    const callHalo = document.getElementById('call-peer-halo');
+    if (callHalo && peerHaloEnabled) {
+        const halo = derivePeerHalo(callerName);
+        callHalo.style.background = halo.linearGradient;
+        callHalo.style.boxShadow = halo.boxShadow;
+    }
+    document.getElementById('voice-call-overlay').classList.remove('hidden');
 }
 
-function showIncomingCall(msg) {
-    document.getElementById('call-peer-name').innerText = `@Peer (${msg.call_id})`;
-    document.getElementById('voice-call-overlay').classList.remove('hidden');
+async function acceptIncomingCall() {
+    if (!pendingIncomingCall) return;
+    initWebAudioContext();
+    
+    document.getElementById('call-controls-incoming').classList.add('hidden');
+    document.getElementById('call-controls-active').classList.remove('hidden');
+    document.getElementById('call-timer').innerText = 'Connecting...';
+
+    const stream = await setupLocalAudioStream();
+    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+
+    if (stream) {
+        stream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, stream));
+    }
+
+    rtcPeerConnection.onicecandidate = (event) => {
+        if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'ICE_CANDIDATE',
+                candidate: event.candidate,
+                recipient_id: pendingIncomingCall.caller_id,
+                call_id: currentActiveCallId
+            }));
+        }
+    };
+
+    rtcPeerConnection.ontrack = (event) => {
+        attachRemoteAudio(event.streams[0]);
+    };
+
+    if (pendingIncomingCall.sdp) {
+        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(pendingIncomingCall.sdp));
+        const answer = await rtcPeerConnection.createAnswer();
+        await rtcPeerConnection.setLocalDescription(answer);
+
+        ws.send(JSON.stringify({
+            type: 'CALL_ANSWER',
+            sdp: answer,
+            call_id: currentActiveCallId,
+            recipient_id: pendingIncomingCall.caller_id,
+            callee_id: currentUser.user_id
+        }));
+    }
+
+    startCallDurationTimer();
+}
+
+function declineIncomingCall() {
+    if (pendingIncomingCall && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'CALL_HANGUP',
+            call_id: currentActiveCallId,
+            recipient_id: pendingIncomingCall.caller_id
+        }));
+    }
+    endVoiceCall();
+}
+
+async function handleCallAnswer(msg) {
+    if (rtcPeerConnection && msg.sdp) {
+        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+        startCallDurationTimer();
+    }
+}
+
+async function handleIceCandidate(msg) {
+    if (rtcPeerConnection && msg.candidate) {
+        try {
+            await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
+        } catch (_: Exception) {}
+    }
+}
+
+function handleCallHangup(msg) {
+    endVoiceCall();
+}
+
+function attachRemoteAudio(stream) {
+    if (!remoteAudioElement) {
+        remoteAudioElement = new Audio();
+        remoteAudioElement.autoplay = true;
+    }
+    remoteAudioElement.srcObject = stream;
+    remoteAudioElement.play().catch(e => console.warn("Auto-play error:", e));
+
+    if (audioCtx) {
+        try {
+            const remoteSource = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            remoteSource.connect(analyser);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            const checkRemoteEnergy = () => {
+                if (!remoteAudioElement || !remoteAudioElement.srcObject) return;
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
+                if (avg > 8) {
+                    targetAudioAmplitude = Math.min(1.0, (avg / 128.0) * soundSensitivity);
+                }
+                requestAnimationFrame(checkRemoteEnergy);
+            };
+            checkRemoteEnergy();
+        } catch (_: Exception) {}
+    }
+}
+
+function startCallDurationTimer() {
+    callStartTimestamp = Date.now();
+    if (callTimerInterval) clearInterval(callTimerInterval);
+    callTimerInterval = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - callStartTimestamp) / 1000);
+        const mins = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+        const secs = (elapsedSec % 60).toString().padStart(2, '0');
+        const timerEl = document.getElementById('call-timer');
+        if (timerEl) timerEl.innerText = `${mins}:${secs} (48kHz Hi-Fi)`;
+    }, 1000);
+}
+
+function endVoiceCall() {
+    if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+    }
+    
+    const targetPeerId = activePeer ? activePeer.user_id : (pendingIncomingCall ? pendingIncomingCall.caller_id : null);
+    if (targetPeerId && ws && ws.readyState === WebSocket.OPEN && currentActiveCallId) {
+        ws.send(JSON.stringify({
+            type: 'CALL_HANGUP',
+            call_id: currentActiveCallId,
+            recipient_id: targetPeerId
+        }));
+    }
+
+    if (rtcPeerConnection) {
+        try { rtcPeerConnection.close(); } catch (_) {}
+        rtcPeerConnection = null;
+    }
+
+    if (localMediaStream) {
+        localMediaStream.getTracks().forEach(t => t.stop());
+        localMediaStream = null;
+    }
+
+    if (remoteAudioElement) {
+        remoteAudioElement.srcObject = null;
+    }
+
+    pendingIncomingCall = null;
+    currentActiveCallId = null;
+    targetAudioAmplitude = 0.0;
+    
+    const overlay = document.getElementById('voice-call-overlay');
+    if (overlay) overlay.classList.add('hidden');
 }
 
 // ==============================================================================

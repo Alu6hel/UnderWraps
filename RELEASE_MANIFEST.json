@@ -18,8 +18,8 @@
       "target": "Android Mobile APK Package",
       "executable": "UnderWraps.apk",
       "path": "dist/UnderWraps.apk",
-      "sha256": "69497A9A76F9C64E74542FAE45D9A9A45A5CC95A8556CE900A1A5F1ADCD814A7",
-      "size_bytes": 11982629
+      "sha256": "772A800149B64AE66BF0207F607871E445093D3FADF281062541E5E9B882981C",
+      "size_bytes": 11982701
     }
   ],
   "server_repository": "https://github.com/Alu6hel/UnderWrapsServer.git",
@@ -34,6 +34,6 @@
     "Cryptographic Peer Color Halo (Deterministic Public Key Fingerprinting)",
     "100% On-Device Neural Semantic Search (128-D Vector Cosine Matching)",
     "150MB Media Quota Ceiling per User",
-    "48kHz Hi-Fi Voice Calling & Crystal Voice Notes"
+    "48kHz Hi-Fi WebRTC Voice Calling with STUN & Crystal Voice Notes"
   ]
 }

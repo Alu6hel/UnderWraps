@@ -161,8 +161,12 @@
             <h3>HIGH-QUALITY 48kHz VOICE CALL</h3>
             <h1 id="call-peer-name">@peer</h1>
             <p id="call-timer">Calling...</p>
-            <div class="call-controls">
+            <div id="call-controls-active" class="call-controls">
                 <button class="btn-end-call" onclick="endVoiceCall()">End Call</button>
+            </div>
+            <div id="call-controls-incoming" class="call-controls hidden" style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
+                <button class="btn-new-chat" style="background: var(--accent-green); padding: 10px 24px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="acceptIncomingCall()">Accept</button>
+                <button class="btn-end-call" style="margin: 0;" onclick="declineIncomingCall()">Decline</button>
             </div>
         </div>
     </div>
