@@ -21,3 +21,13 @@ underwraps_*_data/
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Local Development Only - Strictly Excluded from Git Release
+*dev_mode*
+*dev_config*
+dev_mode.js
+web/dev_mode.js
+android/app/src/main/assets/web/dev_mode.js
+rebuild_and_install.sh
+dist/*.bak
+dist/*.idsig

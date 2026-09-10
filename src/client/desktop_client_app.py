@@ -9,6 +9,8 @@ License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
 ==============================================================================
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import time
@@ -18,9 +20,15 @@ import struct
 import urllib.request
 import urllib.error
 import urllib.parse
-import threading
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, simpledialog
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox, filedialog, simpledialog
+except (ImportError, ModuleNotFoundError):
+    tk = None
+    ttk = None
+    messagebox = None
+    filedialog = None
+    simpledialog = None
 from typing import Dict, List, Any, Optional, Tuple, Set
 
 # Import Sovereign ALU & Python Modules
@@ -187,13 +195,37 @@ def clear_cached_session():
 
 
 class UnderWrapsClientGUI:
-    def __init__(self, root: tk.Tk, server_http: str = "http://127.0.0.1:8080", server_ws_host: str = "127.0.0.1", server_ws_port: int = 8081):
+    def __init__(self, root: Any, server_http: str = "http://127.0.0.1:8080", server_ws_host: str = "127.0.0.1", server_ws_port: int = 8081):
         self.root = root
-        self.root.title("UnderWraps — Sovereign Private Messenger")
-        self.root.geometry("1100x740")
-        self.root.minsize(860, 580)
+        if hasattr(self.root, "title"):
+            self.root.title("UnderWraps — Sovereign Private Messenger")
+        if hasattr(self.root, "geometry"):
+            self.root.geometry("1100x740")
+        if hasattr(self.root, "minsize"):
+            self.root.minsize(860, 580)
         self.current_theme = "galaxy"
-        self.root.configure(bg=BG_APP)
+        if hasattr(self.root, "configure"):
+            self.root.configure(bg=BG_APP)
+
+        # Set taskbar and window icon
+        try:
+            icon_candidates = [
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/assets/logo/app_icon.ico")),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../assets/logo/app_icon.ico")),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/icon.ico")),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/app_icon_512.png"))
+            ]
+            for icon_path in icon_candidates:
+                if os.path.exists(icon_path):
+                    if icon_path.endswith('.ico') and hasattr(self.root, "iconbitmap"):
+                        self.root.iconbitmap(icon_path)
+                        break
+                    elif icon_path.endswith('.png') and tk and hasattr(tk, 'PhotoImage') and hasattr(self.root, "iconphoto"):
+                        img = tk.PhotoImage(file=icon_path)
+                        self.root.iconphoto(True, img)
+                        break
+        except Exception:
+            pass
         
         # Load cached session if available
         self.cached_session = load_cached_session()

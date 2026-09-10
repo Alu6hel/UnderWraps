@@ -624,7 +624,9 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
         width: 280px;
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #161b22;
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+        z-index: 50;
     }
 
     .sidebar.mobile-open {
@@ -647,3 +649,115 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
     .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
     .setting-row button { align-self: flex-end; }
 }
+
+/* ==========================================================
+   Alu Company Brand Logo Scheme (Galaxsee Pro Design System)
+   ========================================================== */
+.brand-badge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.alu-logo-badge {
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    padding: 2.5px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1, #22d3ee);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.alu-logo-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.45);
+}
+
+.alu-logo-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 15.5px;
+    background: #0c101a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    overflow: hidden;
+}
+
+.alu-logo-badge-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    padding: 1.5px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1, #22d3ee);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.alu-logo-inner-small {
+    width: 100%;
+    height: 100%;
+    border-radius: 6.5px;
+    background: #0c101a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5px;
+    overflow: hidden;
+}
+
+.alu-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Sidebar App Brand Bar */
+.app-brand-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(13, 17, 23, 0.45);
+}
+
+.version-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(88, 166, 255, 0.15);
+    color: var(--accent-blue);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    letter-spacing: 0.5px;
+}
+
+/* Light Theme Overrides (Inverted) */
+[data-theme="inverted"] .alu-logo-badge,
+[data-theme="inverted"] .alu-logo-badge-small {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="inverted"] .alu-logo-inner,
+[data-theme="inverted"] .alu-logo-inner-small {
+    background: #ffffff;
+}
+
+[data-theme="inverted"] .app-brand-bar {
+    background: rgba(246, 248, 250, 0.7);
+}
+

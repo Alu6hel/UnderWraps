@@ -8,10 +8,16 @@
   "description": "Sovereign E2EE Messenger with Custom Username, 150MB Media, Voice Notes, and 48kHz Calling.",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "./assets/logo/app_icon_512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/logo/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

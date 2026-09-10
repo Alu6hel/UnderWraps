@@ -1,4 +1,4 @@
-﻿{
+{
   "product_name": "UnderWraps Sovereign Messenger",
   "version": "1.0.0",
   "release_type": "Production Standalone Client & Android Package",
@@ -18,8 +18,8 @@
       "target": "Android Mobile APK Package",
       "executable": "UnderWraps.apk",
       "path": "dist/UnderWraps.apk",
-      "sha256": "772A800149B64AE66BF0207F607871E445093D3FADF281062541E5E9B882981C",
-      "size_bytes": 11982701
+      "sha256": "388D0F2CCBDA63452789F85AE885F32399B11F0EDAA3F94B8852D7367430FA7F",
+      "size_bytes": 11583697
     }
   ],
   "server_repository": "https://github.com/Alu6hel/UnderWrapsServer.git",
