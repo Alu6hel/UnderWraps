@@ -31,7 +31,14 @@ def main():
 
     root = tk.Tk()
     if args.server:
-        parsed = urllib.parse.urlparse(args.server)
+        import re
+        server_raw = args.server.strip()
+        m = re.search(r'https?://[^\s\)\]>"\']+', server_raw)
+        if m:
+            server_raw = m.group(0)
+        elif not server_raw.startswith(("http://", "https://")):
+            server_raw = "http://" + server_raw
+        parsed = urllib.parse.urlparse(server_raw)
         host = parsed.hostname or "127.0.0.1"
         port = parsed.port or 8080
         ws_port = 8081
