@@ -129,7 +129,7 @@ def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("service") == "UNDERWRAPS_SERVER":
                     http_url = data.get("http_url", url)
-                    host = data.get("host", urllib.parse.urlparse(url).hostname or "127.0.0.1")
+                    host = data.get("host", urllib.parse.urlparse(url).hostname or "192.168.50.179")
                     ws_port = int(data.get("ws_port", 8081))
                     return http_url, host, ws_port
     except Exception:
@@ -284,21 +284,16 @@ class UnderWrapsClientGUI:
 
         # Set taskbar and window icon
         try:
-            icon_candidates = [
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/assets/logo/app_icon.ico")),
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../assets/logo/app_icon.ico")),
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/icon.ico")),
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/app_icon_512.png"))
-            ]
-            for icon_path in icon_candidates:
-                if os.path.exists(icon_path):
-                    if icon_path.endswith('.ico') and hasattr(self.root, "iconbitmap"):
-                        self.root.iconbitmap(icon_path)
-                        break
-                    elif icon_path.endswith('.png') and tk and hasattr(tk, 'PhotoImage') and hasattr(self.root, "iconphoto"):
-                        img = tk.PhotoImage(file=icon_path)
-                        self.root.iconphoto(True, img)
-                        break
+            png_icon = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web/assets/logo/app_icon_512.png"))
+            if not os.path.exists(png_icon):
+                png_icon = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../assets/logo/app_icon_512.png"))
+            if os.path.exists(png_icon) and tk and hasattr(tk, 'PhotoImage') and hasattr(self.root, "iconphoto"):
+                self._app_icon = tk.PhotoImage(file=png_icon)
+                self.root.iconphoto(True, self._app_icon)
+            elif hasattr(self.root, "iconbitmap"):
+                ico_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../assets/logo/app_icon.ico"))
+                if os.path.exists(ico_path):
+                    self.root.iconbitmap(ico_path)
         except Exception:
             pass
         
@@ -425,11 +420,11 @@ class UnderWrapsClientGUI:
         tk.Label(card, text="🛡️ UNDERWRAPS", font=("Segoe UI", 20, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 4))
         tk.Label(card, text="Sovereign E2EE • Custom Username • 150MB Media • 48kHz Voice", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(pady=(0, 16))
         
-        # Auto-Discovery Status Badge (No manual IP needed)
+        # Auto-Discovery Status Badge (Displays connected remote server)
         disc_box = tk.Frame(card, bg=BG_INPUT, padx=10, pady=6, highlightthickness=1, highlightbackground=BORDER_COLOR)
         disc_box.pack(fill=tk.X, pady=(0, 16))
-        tk.Label(disc_box, text="⚡ Zero-Config Auto-Discovery Active", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN, bg=BG_INPUT).pack(side=tk.LEFT)
-        tk.Label(disc_box, text=f"• Connected to Server", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_INPUT).pack(side=tk.LEFT, padx=4)
+        tk.Label(disc_box, text="⚡ Connected to Sovereign Server:", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN, bg=BG_INPUT).pack(side=tk.LEFT)
+        tk.Label(disc_box, text=f"{self.server_http}", font=("Consolas", 8, "bold"), fg=ACCENT_BLUE, bg=BG_INPUT).pack(side=tk.LEFT, padx=6)
 
         # Quick Resume Banner if previous session exists
         cached_user = self.cached_session.get("username") if self.cached_session else None
@@ -505,7 +500,7 @@ class UnderWrapsClientGUI:
             if url:
                 self.server_http = url
                 parsed = urllib.parse.urlparse(url)
-                self.server_ws_host = parsed.hostname or "127.0.0.1"
+                self.server_ws_host = parsed.hostname or "192.168.50.179"
                 self.server_ws_port = 8081
             dialog.destroy()
             self._show_auth_screen()
