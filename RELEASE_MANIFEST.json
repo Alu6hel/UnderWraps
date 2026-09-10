@@ -18,8 +18,8 @@
       "target": "Android Mobile APK Package",
       "executable": "UnderWraps.apk",
       "path": "dist/UnderWraps.apk",
-      "sha256": "388D0F2CCBDA63452789F85AE885F32399B11F0EDAA3F94B8852D7367430FA7F",
-      "size_bytes": 11583697
+      "sha256": "2EA8B5580CB078C0D54F12380761A42B47E636A91C800DF8D5A8215931B997D6",
+      "size_bytes": 12311341
     }
   ],
   "server_repository": "https://github.com/Alu6hel/UnderWrapsServer.git",
