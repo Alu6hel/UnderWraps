@@ -12,11 +12,11 @@ function deriveWsUrl(httpUrl) {
         const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
         return `${protocol}//${parsed.hostname}:8081`;
     } catch(e) {
-        return `ws://${(window.location.hostname && window.location.hostname !== '' && window.location.hostname !== 'localhost') ? window.location.hostname : '192.168.50.179'}:8081`;
+        return `ws://192.168.50.179:8081`;
     }
 }
 
-let API_BASE = localStorage.getItem('underwraps_server_http') || (window.location.origin.startsWith('http') ? window.location.origin : 'http://192.168.50.179:8080');
+let API_BASE = localStorage.getItem('underwraps_server_http') || (window.location.origin.startsWith('http') && !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1') ? window.location.origin : 'http://192.168.50.179:8080');
 let WS_URL = deriveWsUrl(API_BASE);
 const MAX_FILE_BYTES = 157286400; // 150MB
 
@@ -30,7 +30,7 @@ async function autoDetectServer() {
         }
     } catch(e) {}
 
-    const candidates = ['http://192.168.50.179:8080', 'http://127.0.0.1:8080'];
+    const candidates = ['http://192.168.50.179:8080'];
     for (const cand of candidates) {
         try {
             const resp = await fetch(`${cand}/api/v1/health`, { signal: AbortSignal.timeout(600) });

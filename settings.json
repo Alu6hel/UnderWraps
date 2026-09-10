@@ -20,14 +20,13 @@
     "media_storage_allowed": true
   },
   "server": {
-    "default_host": "127.0.0.1",
+    "default_host": "192.168.50.179",
     "target_hosts": [
-      "127.0.0.1",
       "192.168.50.179"
     ],
     "http_port": 8080,
     "ws_port": 8081,
-    "auto_start": true,
+    "auto_start": false,
     "enable_encryption_at_rest": true
   },
   "media": {

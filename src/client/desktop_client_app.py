@@ -116,6 +116,7 @@ MAX_FILE_BYTES = 157286400  # 150 MB
 # ------------------------------------------------------------------------------
 SESSION_FILE_PATH = os.path.expanduser("~/.underwraps/session.json")
 
+<<<<<<< HEAD
 SETTINGS_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../settings.json"))
 
 def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str, str, int]]:
@@ -136,16 +137,16 @@ def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str
         pass
     return None
 
-def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", timeout: float = 0.8) -> Tuple[str, str, int]:
+def discover_underwraps_server(default_http: str = "http://192.168.50.179:8080", timeout: float = 0.8) -> Tuple[str, str, int]:
     """
-    Zero-configuration 4-Tier Autonomous Discovery:
-    1. Direct Priority Candidates: localhost, default_http, target_hosts from settings.json, and LAN server.
+    Zero-configuration 4-Tier Autonomous Discovery across Local Network:
+    Note: The server runs on a dedicated machine across the network, NOT on this PC.
+    1. Direct Priority Candidates: default_http and remote network target hosts (e.g. 192.168.50.179).
     2. Zero-Config UDP Broadcast Probe across LAN (Port 8088).
     3. Ultra-Fast Parallel Subnet Socket Sweep across /24 local network.
-    4. Fallback to default host.
+    4. Fallback to default remote host.
     """
-    # 1. Tier 1: Probe priority candidates in parallel
-    candidates = ["127.0.0.1", "192.168.50.179"]
+    candidates = ["192.168.50.179"]
     if default_http:
         candidates.insert(0, default_http)
 
@@ -156,7 +157,7 @@ def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", time
                 cfg = json.load(f)
                 extra = cfg.get("server", {}).get("target_hosts", [])
                 for h in extra:
-                    if h not in candidates:
+                    if h not in ("127.0.0.1", "localhost") and h not in candidates:
                         candidates.append(h)
     except Exception:
         pass
@@ -223,9 +224,9 @@ def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", time
     except Exception:
         pass
 
-    # 4. Fallback
+    # 4. Fallback to designated remote server
     parsed = urllib.parse.urlparse(default_http)
-    host = parsed.hostname or "127.0.0.1"
+    host = parsed.hostname or "192.168.50.179"
     return default_http, host, 8081
 
 def load_cached_session() -> Optional[Dict[str, Any]]:
@@ -270,7 +271,7 @@ def clear_cached_session():
 
 
 class UnderWrapsClientGUI:
-    def __init__(self, root: Any, server_http: str = "http://127.0.0.1:8080", server_ws_host: str = "127.0.0.1", server_ws_port: int = 8081):
+    def __init__(self, root: Any, server_http: str = "http://192.168.50.179:8080", server_ws_host: str = "192.168.50.179", server_ws_port: int = 8081):
         self.root = root
         if hasattr(self.root, "title"):
             self.root.title("UnderWraps — Sovereign Private Messenger")
@@ -305,10 +306,10 @@ class UnderWrapsClientGUI:
         # Load cached session if available
         self.cached_session = load_cached_session()
         target_server = server_http
-        if self.cached_session and self.cached_session.get("server_http"):
+        if self.cached_session and self.cached_session.get("server_http") and server_http == "http://192.168.50.179:8080":
             target_server = self.cached_session.get("server_http")
         
-        # Auto-discover UnderWraps server across LAN / localhost
+        # Auto-discover UnderWraps server across LAN
         try:
             disc_http, disc_ws_host, disc_ws_port = discover_underwraps_server(default_http=target_server, timeout=0.6)
             self.server_http = disc_http

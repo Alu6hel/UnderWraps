@@ -26,25 +26,23 @@ def main():
     import argparse
     import urllib.parse
     parser = argparse.ArgumentParser(description="UnderWraps Sovereign Client")
-    parser.add_argument("--server", type=str, default=None, help="Server HTTP address (e.g. http://192.168.50.179:8080)")
+    parser.add_argument("--server", type=str, default="http://192.168.50.179:8080", help="Remote Server HTTP address (e.g. http://192.168.50.179:8080)")
     args, _ = parser.parse_known_args()
 
     root = tk.Tk()
-    if args.server:
-        import re
-        server_raw = args.server.strip()
-        m = re.search(r'https?://[^\s\)\]>"\']+', server_raw)
-        if m:
-            server_raw = m.group(0)
-        elif not server_raw.startswith(("http://", "https://")):
-            server_raw = "http://" + server_raw
-        parsed = urllib.parse.urlparse(server_raw)
-        host = parsed.hostname or "127.0.0.1"
-        port = parsed.port or 8080
-        ws_port = 8081
-        app = UnderWrapsClientGUI(root, server_http=f"http://{host}:{port}", server_ws_host=host, server_ws_port=ws_port)
-    else:
-        app = UnderWrapsClientGUI(root)
+    server_target = args.server or "http://192.168.50.179:8080"
+    import re
+    server_raw = server_target.strip()
+    m = re.search(r'https?://[^\s\)\]>"\']+', server_raw)
+    if m:
+        server_raw = m.group(0)
+    elif not server_raw.startswith(("http://", "https://")):
+        server_raw = "http://" + server_raw
+    parsed = urllib.parse.urlparse(server_raw)
+    host = parsed.hostname or "192.168.50.179"
+    port = parsed.port or 8080
+    ws_port = 8081
+    app = UnderWrapsClientGUI(root, server_http=f"http://{host}:{port}", server_ws_host=host, server_ws_port=ws_port)
     root.mainloop()
 
 if __name__ == "__main__":

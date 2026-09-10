@@ -36,7 +36,7 @@
                 <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
                     <span id="auth-server-dot" style="color: var(--accent-green); font-weight: bold; font-size: 10px;">●</span>
                     <span style="color: var(--text-muted); font-size: 11px;">Server:</span>
-                    <span id="auth-server-url-display" style="font-family: monospace; font-size: 11px; color: var(--accent-blue); font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;">http://127.0.0.1:8080</span>
+                    <span id="auth-server-url-display" style="font-family: monospace; font-size: 11px; color: var(--accent-blue); font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;">http://192.168.50.179:8080</span>
                 </div>
                 <button type="button" class="btn-server-config" onclick="promptChangeServerURL()" style="background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(88, 166, 255, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; flex-shrink: 0;" title="Change Server Host/IP Address for Multi-PC Connectivity">Change IP 🌐</button>
             </div>
@@ -340,7 +340,7 @@
                 <div id="settings-tab-server" class="settings-panel hidden">
                     <div class="setting-row">
                         <label style="font-size: 12px; font-weight: 600;">Server HTTP Base URL</label>
-                        <input type="text" id="settings-server-url" value="http://127.0.0.1:8080" style="margin-top: 6px;">
+                        <input type="text" id="settings-server-url" value="http://192.168.50.179:8080" style="margin-top: 6px;">
                     </div>
                     <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: none;">
                         <button class="btn-primary" style="width: auto; padding: 6px 14px;" onclick="testServerPing()">Test Server Latency</button>
