@@ -116,7 +116,6 @@ MAX_FILE_BYTES = 157286400  # 150 MB
 # ------------------------------------------------------------------------------
 SESSION_FILE_PATH = os.path.expanduser("~/.underwraps/session.json")
 
-<<<<<<< HEAD
 SETTINGS_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../settings.json"))
 
 def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str, str, int]]:
