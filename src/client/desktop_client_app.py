@@ -1305,6 +1305,9 @@ class UnderWrapsClientGUI:
             for w in [halo_cv, details_box]:
                 w.bind("<Button-1>", lambda e, conv=c: self._select_conversation(conv))
 
+        if convs and not self.active_conv_id:
+            self._select_conversation(convs[0])
+
     def _select_conversation(self, conv: Dict[str, Any]):
         self.active_conv_id = conv["conversation_id"]
         self.active_peer = {
