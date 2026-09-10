@@ -1277,7 +1277,15 @@ class UnderWrapsClientGUI:
             req = urllib.request.Request(f"{self.server_http}/api/v1/conversations?user_id={self.current_user['user_id']}")
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            self._render_conversation_list(data.get("conversations", []))
+            convs = data.get("conversations", [])
+            self._render_conversation_list(convs)
+            
+            # Automatically open and display conversation if none selected
+            if not self.active_conv_id and convs:
+                self._select_conversation(convs[0])
+            elif self.active_conv_id:
+                # Refresh active conversation messages
+                self._fetch_and_render_active_messages()
         except Exception:
             pass
 
@@ -1297,13 +1305,32 @@ class UnderWrapsClientGUI:
             details_box = tk.Frame(item, bg=item_bg)
             details_box.pack(side=tk.LEFT, fill=tk.X, expand=True)
             
-            tk.Label(details_box, text=f"@{c.get('peer_username', 'User')}", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=item_bg).pack(anchor="w")
+            lbl_user = tk.Label(details_box, text=f"@{c.get('peer_username', 'User')}", font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg=item_bg)
+            lbl_user.pack(anchor="w")
             last_msg = c.get("last_ciphertext") or "No messages yet"
-            tk.Label(details_box, text=last_msg[:24], font=("Segoe UI", 8), fg=TEXT_MUTED, bg=item_bg).pack(anchor="w")
+            lbl_preview = tk.Label(details_box, text=last_msg[:28], font=("Segoe UI", 8), fg=TEXT_MUTED, bg=item_bg)
+            lbl_preview.pack(anchor="w")
             
-            item.bind("<Button-1>", lambda e, conv=c: self._select_conversation(conv))
-            for w in [halo_cv, details_box]:
-                w.bind("<Button-1>", lambda e, conv=c: self._select_conversation(conv))
+            # Recursively bind <Button-1> click to all widgets so clicking anywhere opens the conversation
+            def _bind_all(w, conv_target):
+                w.bind("<Button-1>", lambda e, target=conv_target: self._select_conversation(target))
+                for child in w.winfo_children():
+                    _bind_all(child, conv_target)
+            _bind_all(item, c)
+
+    def _fetch_and_render_active_messages(self):
+        if not self.active_conv_id:
+            return
+        try:
+            req = urllib.request.Request(f"{self.server_http}/api/v1/conversations/{self.active_conv_id}/messages")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                msgs = json.loads(resp.read().decode("utf-8")).get("messages", [])
+            for w in self.feed_inner.winfo_children():
+                w.destroy()
+            for m in msgs:
+                self._render_message_bubble(m)
+        except Exception:
+            pass
 
         if convs and not self.active_conv_id:
             self._select_conversation(convs[0])
@@ -1332,17 +1359,8 @@ class UnderWrapsClientGUI:
         
         self.btn_call.pack(side=tk.RIGHT)
         
-        # Fetch Messages
-        try:
-            req = urllib.request.Request(f"{self.server_http}/api/v1/conversations/{self.active_conv_id}/messages")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                msgs = json.loads(resp.read().decode("utf-8")).get("messages", [])
-            for w in self.feed_inner.winfo_children():
-                w.destroy()
-            for m in msgs:
-                self._render_message_bubble(m)
-        except Exception:
-            pass
+        # Fetch and render messages
+        self._fetch_and_render_active_messages()
 
     def _render_message_bubble(self, msg: Dict[str, Any]):
         is_me = msg.get("sender_id") == self.current_user["user_id"]
