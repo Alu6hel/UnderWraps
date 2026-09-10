@@ -20,6 +20,8 @@ import struct
 import urllib.request
 import urllib.error
 import urllib.parse
+import threading
+import concurrent.futures
 try:
     import tkinter as tk
     from tkinter import ttk, messagebox, filedialog, simpledialog
@@ -114,24 +116,62 @@ MAX_FILE_BYTES = 157286400  # 150 MB
 # ------------------------------------------------------------------------------
 SESSION_FILE_PATH = os.path.expanduser("~/.underwraps/session.json")
 
-def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", timeout: float = 0.8) -> Tuple[str, str, int]:
-    """
-    Zero-configuration auto-discovery:
-    1. Probes localhost:8080/api/v1/health (instant response).
-    2. Sends UDP broadcast probe to port 8088 across the local network.
-    3. Falls back to default host.
-    """
-    # 1. Probe localhost
+SETTINGS_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../settings.json"))
+
+def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str, str, int]]:
+    """Probes /api/v1/server/info to verify an UnderWraps Sovereign Node."""
     try:
-        req = urllib.request.Request("http://127.0.0.1:8080/api/v1/server/info")
-        with urllib.request.urlopen(req, timeout=0.3) as resp:
+        url = target if target.startswith("http") else f"http://{target}:8080"
+        endpoint = f"{url.rstrip('/')}/api/v1/server/info"
+        req = urllib.request.Request(endpoint)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status == 200:
                 data = json.loads(resp.read().decode("utf-8"))
-                return data.get("http_url", "http://127.0.0.1:8080"), data.get("host", "127.0.0.1"), int(data.get("ws_port", 8081))
+                if data.get("service") == "UNDERWRAPS_SERVER":
+                    http_url = data.get("http_url", url)
+                    host = data.get("host", urllib.parse.urlparse(url).hostname or "127.0.0.1")
+                    ws_port = int(data.get("ws_port", 8081))
+                    return http_url, host, ws_port
+    except Exception:
+        pass
+    return None
+
+def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", timeout: float = 0.8) -> Tuple[str, str, int]:
+    """
+    Zero-configuration 4-Tier Autonomous Discovery:
+    1. Direct Priority Candidates: localhost, default_http, target_hosts from settings.json, and LAN server.
+    2. Zero-Config UDP Broadcast Probe across LAN (Port 8088).
+    3. Ultra-Fast Parallel Subnet Socket Sweep across /24 local network.
+    4. Fallback to default host.
+    """
+    # 1. Tier 1: Probe priority candidates in parallel
+    candidates = ["127.0.0.1", "192.168.50.179"]
+    if default_http:
+        candidates.insert(0, default_http)
+
+    # Read extra candidates from settings.json if present
+    try:
+        if os.path.exists(SETTINGS_FILE_PATH):
+            with open(SETTINGS_FILE_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                extra = cfg.get("server", {}).get("target_hosts", [])
+                for h in extra:
+                    if h not in candidates:
+                        candidates.append(h)
     except Exception:
         pass
 
-    # 2. UDP Broadcast Probe on LAN (Port 8088)
+    seen = set()
+    unique_candidates = [c for c in candidates if not (c in seen or seen.add(c))]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(unique_candidates))) as ex:
+        futures = [ex.submit(_probe_http_server, c, 0.35) for c in unique_candidates]
+        for f in concurrent.futures.as_completed(futures):
+            res = f.result()
+            if res:
+                return res
+
+    # 2. Tier 2: UDP Broadcast Probe on LAN (Port 8088)
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -148,7 +188,42 @@ def discover_underwraps_server(default_http: str = "http://127.0.0.1:8080", time
     except Exception:
         pass
 
-    # 3. Fallback
+    # 3. Tier 3: Parallel Subnet Socket Sweep across /24 LAN range
+    try:
+        lan_prefix = None
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            my_ip = s.getsockname()[0]
+            lan_prefix = ".".join(my_ip.split(".")[:3])
+        except Exception:
+            pass
+        finally:
+            s.close()
+
+        if lan_prefix:
+            def fast_socket_check(ip):
+                try:
+                    csock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    csock.settimeout(0.2)
+                    if csock.connect_ex((ip, 8080)) == 0:
+                        csock.close()
+                        return _probe_http_server(f"http://{ip}:8080", timeout=0.4)
+                    csock.close()
+                except Exception:
+                    pass
+                return None
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=80) as ex:
+                sweep_futures = [ex.submit(fast_socket_check, f"{lan_prefix}.{i}") for i in range(1, 255)]
+                for f in concurrent.futures.as_completed(sweep_futures):
+                    res = f.result()
+                    if res:
+                        return res
+    except Exception:
+        pass
+
+    # 4. Fallback
     parsed = urllib.parse.urlparse(default_http)
     host = parsed.hostname or "127.0.0.1"
     return default_http, host, 8081
