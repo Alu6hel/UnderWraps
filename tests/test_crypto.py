@@ -24,7 +24,7 @@ class TestCryptoAnd2FA(unittest.TestCase):
     def test_salted_password_hashing(self):
         salt1 = self.db._generate_salt()
         salt2 = self.db._generate_salt()
-        pwd = "SovereignMasterKey2026!"
+        pwd = "PrivateMasterKey2026!"
         
         hash1 = self.db._hash_password(pwd, salt1)
         hash2 = self.db._hash_password(pwd, salt2)

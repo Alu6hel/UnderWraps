@@ -22,13 +22,13 @@
   <circle cx="400" cy="400" r="320" fill="none" stroke="#58a6ff" stroke-width="2" stroke-dasharray="12 16" opacity="0.4"/>
   <circle cx="400" cy="400" r="280" fill="none" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="6 10" opacity="0.3"/>
 
-  <!-- Sovereign Encrypted Shield Outer -->
+  <!-- Private Encrypted Shield Outer -->
   <path d="M400 140 L580 220 C580 440 400 620 400 620 C400 620 220 440 220 220 Z" 
         fill="url(#shieldGrad)" 
         opacity="0.15" 
         filter="url(#glow)"/>
 
-  <!-- Sovereign Shield Frame -->
+  <!-- Private Shield Frame -->
   <path d="M400 160 L560 230 C560 430 400 590 400 590 C400 590 240 430 240 230 Z" 
         fill="#161b22" 
         stroke="url(#shieldGrad)" 
@@ -40,12 +40,12 @@
   <path d="M290 380 Q400 320 510 380 Q400 440 290 380 Z" fill="#2ea043" opacity="0.8"/>
   <path d="M290 440 Q400 380 510 440 Q400 500 290 440 Z" fill="#a371f7" opacity="0.8"/>
 
-  <!-- Sovereign Central Eye / Key Enclave -->
+  <!-- Private Central Eye / Key Enclave -->
   <circle cx="400" cy="380" r="28" fill="#ffffff" filter="url(#glow)"/>
   <circle cx="400" cy="380" r="14" fill="#0d1117"/>
   <circle cx="400" cy="380" r="6" fill="#58a6ff"/>
 
   <!-- Typography -->
   <text x="400" y="690" text-anchor="middle" font-family="'Segoe UI', -apple-system, sans-serif" font-size="44" font-weight="900" fill="#f0f6fc" letter-spacing="8">UNDERWRAPS</text>
-  <text x="400" y="730" text-anchor="middle" font-family="'Segoe UI', -apple-system, sans-serif" font-size="18" font-weight="600" fill="#8b949e" letter-spacing="4">SOVEREIGN E2EE MESSENGER</text>
+  <text x="400" y="730" text-anchor="middle" font-family="'Segoe UI', -apple-system, sans-serif" font-size="18" font-weight="600" fill="#8b949e" letter-spacing="4">PRIVATE E2EE MESSENGER</text>
 </svg>

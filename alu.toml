@@ -4,7 +4,7 @@ version = "2.1.0"
 authors = ["David Anthony Jones ('Alu') <timesume9@gmail.com>"]
 edition = "2026"
 license = "Alumungandr Master Charter"
-description = "Sovereign E2EE Messenger with Custom Username/Password, Optional 2FA, 150MB Media Guard, 48kHz Voice Calls, Sound-Reactive Themes, Cryptographic Peer Color Halos, and 100% On-Device Neural Semantic Search powered by Kybalion DB."
+description = "Private E2EE Messenger with Custom Username/Password, Optional 2FA, 150MB Media Guard, 48kHz Voice Calls, Sound-Reactive Themes, Cryptographic Peer Color Halos, and 100% On-Device Neural Semantic Search powered by Kybalion DB."
 
 [dependencies]
 kybalion = { path = "../Kybalion" }

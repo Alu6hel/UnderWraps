@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UnderWraps — Sovereign Private Messenger</title>
+    <title>UnderWraps — Private Private Messenger</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d1117">
     <link rel="icon" type="image/svg+xml" href="./assets/logo/dark alu company logo.svg">
@@ -28,7 +28,7 @@
                     </div>
                 </div>
                 <h1>UNDERWRAPS</h1>
-                <p class="tagline">Sovereign E2EE • Custom Username • 150MB Media • 48kHz Voice</p>
+                <p class="tagline">Private E2EE • Custom Username • 150MB Media • 48kHz Voice</p>
             </div>
 
             <!-- Server Connection Status & Remote PC Configuration Bar -->
@@ -57,11 +57,11 @@
             <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" id="login-identifier" value="AluSovereign" placeholder="e.g. sovereign_user" required>
+                    <input type="text" id="login-identifier" value="AluPrivate" placeholder="e.g. private_user" required>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="login-password" value="SovereignPass123" placeholder="••••••••••••" required>
+                    <input type="password" id="login-password" value="PrivatePass123" placeholder="••••••••••••" required>
                 </div>
                 <button type="button" class="btn-primary" onclick="handleLogin(event)">Sign In</button>
             </form>
@@ -70,13 +70,13 @@
             <form id="signup-form" class="auth-form hidden" onsubmit="handleSignup(event)">
                 <div class="form-group">
                     <label>Choose Custom Username</label>
-                    <input type="text" id="signup-username" placeholder="sovereign_user" required>
+                    <input type="text" id="signup-username" placeholder="private_user" required>
                 </div>
                 <div class="form-group">
                     <label>Choose Password</label>
                     <input type="password" id="signup-password" placeholder="••••••••••••" required>
                 </div>
-                <button type="submit" class="btn-success">Create Sovereign Account</button>
+                <button type="submit" class="btn-success">Create Private Account</button>
             </form>
 
             <!-- 2FA OTP Modal -->
@@ -112,7 +112,7 @@
                         </div>
                         <div style="display: flex; flex-direction: column;">
                             <span style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px; color: var(--text-white);">UnderWraps</span>
-                            <span style="font-size: 10px; color: var(--text-muted); letter-spacing: 0.2px;">Sovereign Messenger</span>
+                            <span style="font-size: 10px; color: var(--text-muted); letter-spacing: 0.2px;">Private Messenger</span>
                         </div>
                     </div>
                     <span class="version-pill">v1.0</span>
@@ -389,7 +389,7 @@
     <div id="modal-new-chat" class="modal-overlay hidden">
         <div class="modal-card" style="width: 440px; max-height: 80vh; display: flex; flex-direction: column;">
             <h3>➕ Start Direct Conversation</h3>
-            <p class="setting-desc" style="margin-bottom: 12px;">Select a registered sovereign peer to begin chatting.</p>
+            <p class="setting-desc" style="margin-bottom: 12px;">Select a registered private peer to begin chatting.</p>
             
             <input type="text" id="new-chat-search-input" placeholder="Search by @username..." oninput="filterNewChatUsers()" style="margin-bottom: 12px;">
             

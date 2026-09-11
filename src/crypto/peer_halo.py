@@ -34,7 +34,7 @@ def derive_peer_halo(fingerprint_or_key: str) -> Dict[str, Any]:
     6. Identical input ALWAYS produces identical halo parameters.
     """
     if not fingerprint_or_key:
-        fingerprint_or_key = "sovereign_peer_default"
+        fingerprint_or_key = "private_peer_default"
         
     raw_digest = hashlib.sha256(fingerprint_or_key.encode("utf-8")).digest()
     

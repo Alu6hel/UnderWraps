@@ -1,1 +1,1 @@
-"""UnderWraps Sovereign Core Package"""
+"""UnderWraps Private Core Package"""

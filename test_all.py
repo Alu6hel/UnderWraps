@@ -18,7 +18,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 def run_all_tests():
     print("\n" + "="*78)
-    print(" UNDERWRAPS SOVEREIGN ECOSYSTEM -- MASTER TEST RUNNER")
+    print(" UNDERWRAPS AUTONOMOUS ECOSYSTEM -- MASTER TEST RUNNER")
     print(" Pure ALU SMT Verified | Kybalion DB | 150MB Guard | 48kHz Voice")
     print("="*78 + "\n")
     

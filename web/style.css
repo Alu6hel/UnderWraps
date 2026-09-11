@@ -219,7 +219,7 @@ input:focus { border-color: var(--accent-blue); }
     cursor: pointer;
 }
 
-/* Full-Screen Conversations Hub (Gmail-Style UX, Sovereign Theme) */
+/* Full-Screen Conversations Hub (Gmail-Style UX, Private Theme) */
 .inbox-search-bar {
     display: flex;
     align-items: center;

@@ -97,7 +97,7 @@ fn compute_text_embedding128(text: str) -> Vector128 {
 }
 
 // -----------------------------------------------------------------------------
-// Memory Hygiene & Sovereign Zero-Knowledge Proof
+// Memory Hygiene & Private Zero-Knowledge Proof
 // -----------------------------------------------------------------------------
 
 @ensures("memory_wiped")

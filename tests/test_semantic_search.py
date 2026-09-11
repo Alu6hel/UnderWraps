@@ -27,7 +27,7 @@ class TestNeuralSemanticSearch(unittest.TestCase):
 
     def test_vector_dimension_and_normalization(self):
         """Verify 128-D vector dimension and unit norm invariant."""
-        vec = self.db.compute_embedding("Sovereign encrypted database schema architecture")
+        vec = self.db.compute_embedding("Private encrypted database schema architecture")
         self.assertEqual(len(vec), 128)
         
         # Calculate L2 norm

@@ -17,7 +17,7 @@ Per user requirement:
    - The user emphasizes that messaging and calling must be seamless through the APK when communicating with your Windows messaging app (`UnderWraps.exe`).
 2. **Zero-Click Automatic Connection & Peer Discovery**:
    - Anyone opening the app automatically connects and sees all registered users on the server (via `/api/v1/users/list`) without manual intervention.
-3. **Full-Screen Conversations Hub (Gmail-Style UX, Sovereign Theme)**:
+3. **Full-Screen Conversations Hub (Gmail-Style UX, Private Theme)**:
    - When not in a chat, the conversations screen covers 100% of the display.
    - Features rich peer cards with Peer Halo cryptographic gradients, live online status indicators, instant search, and filter tabs (`All Chats`, `Direct`, `Online Now`).
    - Tapping any peer opens full-screen chat with a clear `← Chats` back navigation button (and native Android back button interception) returning to the inbox.

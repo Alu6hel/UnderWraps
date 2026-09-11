@@ -1,11 +1,11 @@
 {
-  "name": "UnderWraps Sovereign Messenger",
+  "name": "UnderWraps Private Messenger",
   "short_name": "UnderWraps",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
-  "description": "Sovereign E2EE Messenger with Custom Username, 150MB Media, Voice Notes, and 48kHz Calling.",
+  "description": "Private E2EE Messenger with Custom Username, 150MB Media, Voice Notes, and 48kHz Calling.",
   "icons": [
     {
       "src": "./assets/logo/app_icon_512.png",

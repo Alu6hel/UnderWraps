@@ -17,8 +17,8 @@ from src.crypto.peer_halo import derive_peer_halo, hsl_to_hex
 class TestCryptoPeerHalo(unittest.TestCase):
     def test_determinism_invariant(self):
         """Identical public key / username must ALWAYS yield identical halo outputs."""
-        halo1 = derive_peer_halo("sovereign_peer_alpha")
-        halo2 = derive_peer_halo("sovereign_peer_alpha")
+        halo1 = derive_peer_halo("private_peer_alpha")
+        halo2 = derive_peer_halo("private_peer_alpha")
         
         self.assertEqual(halo1["hue_primary"], halo2["hue_primary"])
         self.assertEqual(halo1["hue_secondary"], halo2["hue_secondary"])
@@ -42,7 +42,7 @@ class TestCryptoPeerHalo(unittest.TestCase):
         test_identifiers = [
             "master_architect_alu",
             "peer_vault_9921",
-            "sovereign_node_kybalion",
+            "private_node_kybalion",
             "ed25519_pk_74893721980312",
             "test_user_x"
         ]

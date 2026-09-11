@@ -1,4 +1,4 @@
-# 🔮 UnderWraps Sovereign Messenger (v1.0.0)
+# 🔮 UnderWraps Private Messenger (v1.0.0)
 
 <p align="center">
   <img src="assets/logo/underwraps_logo.svg" alt="UnderWraps Logo" width="120" height="120" />
@@ -11,7 +11,7 @@
 <p align="center">
   <a href="#"><img src="https://img.shields.io/badge/Release-v1.0.0-blue.svg" alt="Version" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Android%20%7C%20Web-brightgreen.svg" alt="Platform" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/License-Proprietary%20%2F%20Sovereign-purple.svg" alt="License" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/License-Proprietary%20%2F%20Private-purple.svg" alt="License" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Tests-Passing%20(100%25)-success.svg" alt="Tests" /></a>
 </p>
 
@@ -58,7 +58,7 @@
 ---
 
 ## 🌐 Server Repository
-The dedicated sovereign server engine, Docker container, and server GUI dashboard are hosted separately at:
+The dedicated private server engine, Docker container, and server GUI dashboard are hosted separately at:
 🔗 **[https://github.com/Alu6hel/UnderWrapsServer.git](https://github.com/Alu6hel/UnderWrapsServer.git)**
 
 ---

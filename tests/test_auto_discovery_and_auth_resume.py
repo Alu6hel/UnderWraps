@@ -45,7 +45,7 @@ class TestAutoDiscoveryAndAuthResume(unittest.TestCase):
                                 "status": "ONLINE",
                                 "http_port": 8080,
                                 "ws_port": 8081,
-                                "server_name": "Mock Sovereign Relay",
+                                "server_name": "Mock Private Relay",
                                 "version": "1.0.0"
                             }).encode("utf-8")
                             sock.sendto(payload, addr)

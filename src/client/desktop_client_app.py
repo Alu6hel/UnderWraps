@@ -33,7 +33,7 @@ except (ImportError, ModuleNotFoundError):
     simpledialog = None
 from typing import Dict, List, Any, Optional, Tuple, Set
 
-# Import Sovereign ALU & Python Modules
+# Import Private ALU & Python Modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from src.crypto.peer_halo import derive_peer_halo
 from src.client.sound_reactive_engine import SoundReactiveEngine
@@ -119,7 +119,7 @@ SESSION_FILE_PATH = os.path.expanduser("~/.underwraps/session.json")
 SETTINGS_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../settings.json"))
 
 def _probe_http_server(target: str, timeout: float = 0.35) -> Optional[Tuple[str, str, int]]:
-    """Probes /api/v1/server/info to verify an UnderWraps Sovereign Node."""
+    """Probes /api/v1/server/info to verify an UnderWraps Private Node."""
     try:
         url = target if target.startswith("http") else f"http://{target}:8080"
         endpoint = f"{url.rstrip('/')}/api/v1/server/info"

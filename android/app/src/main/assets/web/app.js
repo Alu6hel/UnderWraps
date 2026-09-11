@@ -1,6 +1,6 @@
 /**
  * UnderWraps Web PWA Client Application
- * Sovereign E2EE, Sound-Reactive Live Shaders, Cryptographic Peer Halo & 150MB Media
+ * Private E2EE, Sound-Reactive Live Shaders, Cryptographic Peer Halo & 150MB Media
  *
  * Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
  * License: Alumungandr Master Charter (Copyright © 2026 Alumungandr)
@@ -98,7 +98,7 @@ async function probeServerStatus() {
     } catch(e) {
         if (dot) {
             dot.style.color = '#8b949e';
-            dot.title = 'Server offline / Sovereign standalone node';
+            dot.title = 'Server offline / Private standalone node';
         }
     }
 }
@@ -200,7 +200,7 @@ async function resumeCachedSession(silent = false) {
         if (!cached) return;
         if (!cached.user_id && cached.id) cached.user_id = cached.id;
 
-        // Instant local sovereign resume
+        // Instant local private resume
         onAuthSuccess(cached);
 
         // Ping server in background if session token exists
@@ -258,12 +258,12 @@ async function handleLogin(e) {
             onAuthSuccess(data);
         }
     } catch (err) {
-        console.warn('Server offline, initiating sovereign local session:', err);
+        console.warn('Server offline, initiating private local session:', err);
         const fallbackUser = {
-            id: 'sovereign_' + (id || 'user').toLowerCase(),
-            user_id: 'sovereign_' + (id || 'user').toLowerCase(),
-            username: id || 'sovereign_user',
-            display_name: id || 'Sovereign Node',
+            id: 'private_' + (id || 'user').toLowerCase(),
+            user_id: 'private_' + (id || 'user').toLowerCase(),
+            username: id || 'private_user',
+            display_name: id || 'Private Node',
             session_token: 'local_node_token_' + Date.now()
         };
         localStorage.setItem('underwraps_session', JSON.stringify(fallbackUser));
@@ -319,12 +319,12 @@ async function handleSignup(e) {
         localStorage.setItem('underwraps_session', JSON.stringify(userData));
         onAuthSuccess(userData);
     } catch (err) {
-        console.warn('Server offline, initiating sovereign local session:', err);
+        console.warn('Server offline, initiating private local session:', err);
         const fallbackUser = {
-            id: 'sovereign_' + (user || 'user').toLowerCase(),
-            user_id: 'sovereign_' + (user || 'user').toLowerCase(),
-            username: user || 'sovereign_user',
-            display_name: user || 'Sovereign Node',
+            id: 'private_' + (user || 'user').toLowerCase(),
+            user_id: 'private_' + (user || 'user').toLowerCase(),
+            username: user || 'private_user',
+            display_name: user || 'Private Node',
             session_token: 'local_node_token_' + Date.now()
         };
         localStorage.setItem('underwraps_session', JSON.stringify(fallbackUser));
@@ -364,7 +364,7 @@ function onAuthSuccess(user) {
 // 4. Cryptographic Peer Color Halo Generator (SMT Invariant Compliant)
 // ==============================================================================
 function derivePeerHalo(identifier) {
-    if (!identifier) identifier = 'sovereign_peer_default';
+    if (!identifier) identifier = 'private_peer_default';
     
     // Simple deterministic hash to 32 bytes equivalent
     let hash = 0;
@@ -621,7 +621,7 @@ async function loadConversations() {
                 peer_id: u.user_id,
                 peer_username: u.username,
                 peer_display_name: u.display_name || u.username,
-                last_ciphertext: u.is_online ? '● Available on LAN — Tap to start private E2EE chat' : 'Registered sovereign peer — Tap to chat',
+                last_ciphertext: u.is_online ? '● Available on LAN — Tap to start private E2EE chat' : 'Registered private peer — Tap to chat',
                 is_online: Boolean(u.is_online),
                 last_msg_time: null,
                 is_new_user: true
@@ -633,21 +633,21 @@ async function loadConversations() {
     if (unifiedList.length === 0) {
         unifiedList.push(
             {
-                conversation_id: 'sovereign-channel-1',
+                conversation_id: 'private-channel-1',
                 peer_id: 'alumungandr',
                 peer_username: 'Alumungandr',
                 peer_display_name: 'Alumungandr Founder Node',
-                last_ciphertext: 'Welcome to UnderWraps Sovereign Messenger! 48kHz Voice Ready.',
+                last_ciphertext: 'Welcome to UnderWraps Private Messenger! 48kHz Voice Ready.',
                 is_online: true,
                 last_msg_time: Date.now(),
                 is_new_user: false
             },
             {
-                conversation_id: 'sovereign-channel-2',
+                conversation_id: 'private-channel-2',
                 peer_id: 'alusecurity',
                 peer_username: 'AluSecurity',
-                peer_display_name: 'Alu Sovereign Guard',
-                last_ciphertext: 'E2EE Sovereign Node Active • Kybalion SMT Verified',
+                peer_display_name: 'Alu Private Guard',
+                last_ciphertext: 'E2EE Private Node Active • Kybalion SMT Verified',
                 is_online: true,
                 last_msg_time: Date.now() - 3600000,
                 is_new_user: false
@@ -901,7 +901,7 @@ async function selectConversation(conv) {
         } else {
             renderMessageBubble({
                 sender_id: conv.peer_id || 'system',
-                ciphertext: `🔒 Sovereign E2EE channel established with @${conv.peer_username}. End-to-end encrypted with zero intermediary logging.`,
+                ciphertext: `🔒 Private E2EE channel established with @${conv.peer_username}. End-to-end encrypted with zero intermediary logging.`,
                 created_at: new Date().toISOString()
             });
         }
@@ -910,7 +910,7 @@ async function selectConversation(conv) {
         feed.innerHTML = '';
         renderMessageBubble({
             sender_id: conv.peer_id || 'system',
-            ciphertext: `🔒 Sovereign E2EE channel established with @${conv.peer_username}. End-to-end encrypted with zero intermediary logging.`,
+            ciphertext: `🔒 Private E2EE channel established with @${conv.peer_username}. End-to-end encrypted with zero intermediary logging.`,
             created_at: new Date().toISOString()
         });
     }
@@ -1150,7 +1150,7 @@ async function startVoiceCall() {
     }
     document.getElementById('voice-call-overlay').classList.remove('hidden');
 
-    // If offline or WS closed, simulate sovereign active channel
+    // If offline or WS closed, simulate private active channel
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         setTimeout(() => {
             const timerEl = document.getElementById('call-timer');
@@ -1196,7 +1196,7 @@ async function startVoiceCall() {
             recipient_id: activePeer.user_id,
             callee_id: activePeer.user_id,
             caller_id: currentUser ? currentUser.user_id : 'anonymous',
-            caller_username: currentUser ? currentUser.username : 'sovereign_user'
+            caller_username: currentUser ? currentUser.username : 'private_user'
         }));
     } catch (e) {
         console.warn("RTC offer error:", e);
@@ -1513,7 +1513,7 @@ async function requestNotificationPermission() {
     const result = await Notification.requestPermission();
     checkPermissions();
     if (result === 'granted') {
-        new Notification('UnderWraps Sovereign Messenger', { body: 'Notifications enabled!' });
+        new Notification('UnderWraps Private Messenger', { body: 'Notifications enabled!' });
     }
 }
 
