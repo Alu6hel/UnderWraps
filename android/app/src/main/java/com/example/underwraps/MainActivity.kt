@@ -79,10 +79,22 @@ class MainActivity : ComponentActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+        webView.evaluateJavascript(
+            "(function() { " +
+            "  var layout = document.getElementById('messenger-layout') || document.querySelector('.messenger-layout'); " +
+            "  if (layout && layout.classList.contains('view-chat')) { " +
+            "    if (typeof returnToInbox === 'function') { returnToInbox(); return true; } " +
+            "  } " +
+            "  return false; " +
+            "})()"
+        ) { result ->
+            if (result != "true") {
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    super.onBackPressed()
+                }
+            }
         }
     }
 }

@@ -97,7 +97,7 @@
 
     <!-- 2. Main Messenger Screen -->
     <div id="chat-screen" class="screen-container hidden">
-        <div class="messenger-layout">
+        <div id="messenger-layout" class="messenger-layout view-inbox">
             <!-- Mobile Sidebar Backdrop -->
             <div id="mobile-sidebar-backdrop" class="sidebar-backdrop hidden" onclick="closeMobileSidebar()"></div>
 
@@ -138,6 +138,16 @@
                     <button class="btn-new-chat" style="margin: 0; flex: 1; background-color: var(--bg-input);" onclick="openNeuralSearchModal()">🧠 Neural Search</button>
                 </div>
 
+                <div class="inbox-search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="inbox-search-input" placeholder="Search conversations & LAN users..." oninput="filterConversationsAndUsers()">
+                </div>
+                <div class="inbox-filter-tabs">
+                    <button id="filter-all" class="filter-tab-btn active" onclick="setInboxFilter('all')">💬 All Chats</button>
+                    <button id="filter-direct" class="filter-tab-btn" onclick="setInboxFilter('direct')">⚡ Direct</button>
+                    <button id="filter-online" class="filter-tab-btn" onclick="setInboxFilter('online')">🟢 Online Now</button>
+                </div>
+
                 <div id="conversation-list" class="conversation-list">
                     <!-- Dynamic conversations loaded here with cryptographic peer halos -->
                 </div>
@@ -146,7 +156,11 @@
             <!-- Active Chat Area -->
             <main class="chat-area">
                 <header class="chat-header">
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button id="btn-back-to-inbox" class="btn-back-inbox" onclick="returnToInbox()" title="Back to All Chats">
+                            <span class="back-arrow">←</span>
+                            <span class="back-label">Chats</span>
+                        </button>
                         <button id="btn-mobile-sidebar-toggle" class="icon-btn mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Sidebar">☰</button>
                         <div id="peer-avatar-halo" class="avatar-halo-wrapper hidden" style="width: 38px; height: 38px;">
                             <span class="user-avatar" style="font-size: 18px;">👤</span>
