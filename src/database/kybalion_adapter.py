@@ -231,7 +231,7 @@ class KybalionDBAdapter:
                       identity_key_pub: Optional[str] = None, display_name: Optional[str] = None) -> Dict[str, Any]:
         self.total_writes += 1
         username_clean = username.strip().lower()
-        email_clean = email.strip().lower() if email and email.strip() else f"{username_clean}@sovereign.local"
+        email_clean = email.strip().lower() if email and email.strip() else f"{username_clean}@underwraps.local"
         display_name = display_name or username.strip()
         user_id = "usr_" + hashlib.sha256(f"{username_clean}:{email_clean}:{time.time()}".encode()).hexdigest()[:16]
         

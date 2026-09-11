@@ -273,7 +273,7 @@ class UnderWrapsClientGUI:
     def __init__(self, root: Any, server_http: str = "http://192.168.50.179:8080", server_ws_host: str = "192.168.50.179", server_ws_port: int = 8081):
         self.root = root
         if hasattr(self.root, "title"):
-            self.root.title("UnderWraps — Sovereign Private Messenger")
+            self.root.title("UnderWraps — Private Messenger")
         if hasattr(self.root, "geometry"):
             self.root.geometry("1100x740")
         if hasattr(self.root, "minsize"):
@@ -318,15 +318,18 @@ class UnderWrapsClientGUI:
         self.sound_engine = SoundReactiveEngine(sensitivity=1.0, enabled=True)
         self.peer_halo_enabled = True
         
-        # Session State
+        # Session & Presence State
         self.current_user: Optional[Dict[str, Any]] = None
         self.session_token: Optional[str] = None
         self.active_conv_id: Optional[str] = None
         self.active_peer: Optional[Dict[str, Any]] = None
+        self.online_users: Set[str] = set()
+        self.lbl_peer_presence: Optional[tk.Label] = None
         
         # WebSocket connection
         self.ws_sock: Optional[socket.socket] = None
         self.ws_connected = False
+        self._reconnecting = False
         
         # Voice Calling State
         self.active_call_id: Optional[str] = None
@@ -418,12 +421,12 @@ class UnderWrapsClientGUI:
         
         # Logo & Header
         tk.Label(card, text="🛡️ UNDERWRAPS", font=("Segoe UI", 20, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 4))
-        tk.Label(card, text="Sovereign E2EE • Custom Username • 150MB Media • 48kHz Voice", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(pady=(0, 16))
+        tk.Label(card, text="Private E2EE • Custom Username • 150MB Media • 48kHz Voice", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_SIDEBAR).pack(pady=(0, 16))
         
         # Auto-Discovery Status Badge (Displays connected remote server)
         disc_box = tk.Frame(card, bg=BG_INPUT, padx=10, pady=6, highlightthickness=1, highlightbackground=BORDER_COLOR)
         disc_box.pack(fill=tk.X, pady=(0, 16))
-        tk.Label(disc_box, text="⚡ Connected to Sovereign Server:", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN, bg=BG_INPUT).pack(side=tk.LEFT)
+        tk.Label(disc_box, text="⚡ Connected to Server:", font=("Segoe UI", 8, "bold"), fg=ACCENT_GREEN, bg=BG_INPUT).pack(side=tk.LEFT)
         tk.Label(disc_box, text=f"{self.server_http}", font=("Consolas", 8, "bold"), fg=ACCENT_BLUE, bg=BG_INPUT).pack(side=tk.LEFT, padx=6)
 
         # Quick Resume Banner if previous session exists
@@ -470,7 +473,7 @@ class UnderWrapsClientGUI:
         self.entry_reg_pwd.pack(fill=tk.X, pady=(0, 20), ipady=4)
         self.entry_reg_pwd.bind("<Return>", lambda e: self._handle_signup())
         
-        btn_signup = tk.Button(tab_signup, text="Create Sovereign Account", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", activebackground="#238636", relief=tk.FLAT, pady=8, cursor="hand2", command=self._handle_signup)
+        btn_signup = tk.Button(tab_signup, text="Create Account", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", activebackground="#238636", relief=tk.FLAT, pady=8, cursor="hand2", command=self._handle_signup)
         btn_signup.pack(fill=tk.X)
 
         # Footer Server Options
@@ -605,6 +608,7 @@ class UnderWrapsClientGUI:
         self._build_main_messenger_ui()
         self._connect_websocket()
         self._load_conversations()
+        self.root.after(1000, self._poll_presence)
 
     def _sign_out(self):
         """Signs out user, clears session cache, and returns to authentication screen."""
@@ -985,6 +989,8 @@ class UnderWrapsClientGUI:
                     
                 self.ws_sock = s
                 self.ws_connected = True
+                if hasattr(self, "lbl_ws_indicator") and self.lbl_ws_indicator:
+                    self.root.after(0, lambda: self.lbl_ws_indicator.config(text="● Online (E2EE Active)", fg=ACCENT_GREEN))
                 
                 self._send_ws_event({"type": "AUTH", "user_id": self.current_user["user_id"]})
                 
@@ -1017,10 +1023,30 @@ class UnderWrapsClientGUI:
                         payload = buffer[offset:offset+payload_len]
                         buffer = buffer[offset+payload_len:]
                         
-                        if opcode in (0x1, 0x2):
+                        if opcode == 0x9:  # OP_PING from server
+                            # Reply with masked OP_PONG (0xA)
+                            mask = b"\x12\x34\x56\x78"
+                            pong_hdr = bytearray([0x8A, 0x80]) + mask
+                            try:
+                                s.sendall(bytes(pong_hdr))
+                            except Exception:
+                                pass
+                        elif opcode in (0x1, 0x2):
                             self._handle_incoming_ws_event(json.loads(payload.decode("utf-8")))
             except Exception:
+                pass
+            finally:
                 self.ws_connected = False
+                if hasattr(self, "lbl_ws_indicator") and self.lbl_ws_indicator:
+                    self.root.after(0, lambda: self.lbl_ws_indicator.config(text="● Disconnected (Reconnecting...)", fg=ACCENT_RED))
+                # Auto-reconnect after 2 seconds if still authenticated
+                time.sleep(2.0)
+                if self.current_user and not self.ws_connected and not getattr(self, "_reconnecting", False):
+                    self._reconnecting = True
+                    def _reconnect_after():
+                        self._reconnecting = False
+                        self._connect_websocket()
+                    self.root.after(0, _reconnect_after)
                 
         threading.Thread(target=ws_worker, daemon=True).start()
 
@@ -1060,6 +1086,14 @@ class UnderWrapsClientGUI:
                 self.root.after(0, self._render_message_bubble, m)
             self.root.after(0, self._load_conversations)
 
+        elif event_type == "PRESENCE":
+            uid = msg.get("user_id")
+            if msg.get("is_online"):
+                self.online_users.add(uid)
+            else:
+                self.online_users.discard(uid)
+            self.root.after(0, self._update_peer_presence_ui)
+
         elif event_type == "CALL_INCOMING":
             self.root.after(0, self._show_incoming_call_modal, msg)
 
@@ -1072,6 +1106,49 @@ class UnderWrapsClientGUI:
         elif event_type == "AUDIO_RELAY_FRAME":
             if self.active_call_id and hasattr(self, "sound_engine"):
                 self.root.after(0, lambda: self.sound_engine.update_audio_frame(manual_amplitude=0.85))
+
+    def _update_peer_presence_ui(self):
+        """Updates the active chat header presence indicator in real time."""
+        if not self.active_peer or not hasattr(self, "lbl_peer_presence") or not self.lbl_peer_presence:
+            return
+        try:
+            if not self.lbl_peer_presence.winfo_exists():
+                return
+            peer_id = self.active_peer.get("user_id")
+            peer_name = self.active_peer.get("username", "")
+            halo_meta = derive_peer_halo(peer_name)
+            fp = halo_meta.get("fingerprint_short", "")
+            is_online = peer_id in self.online_users
+            if is_online:
+                self.lbl_peer_presence.config(text=f"● Online • E2EE Verified • {fp}", fg=ACCENT_GREEN)
+            else:
+                self.lbl_peer_presence.config(text=f"○ Offline • E2EE Verified • {fp}", fg=TEXT_MUTED)
+        except Exception:
+            pass
+
+    def _poll_presence(self):
+        """Periodically polls server presence endpoint so offline/online status updates immediately."""
+        if not self.current_user:
+            return
+        def poll_worker():
+            try:
+                url = f"{self.server_http}/api/v1/users/presence"
+                req = urllib.request.Request(url, headers={"User-Agent": "UnderWrapsClient/2.0"})
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    new_online = set(data.get("online_users", []))
+                    if new_online != self.online_users:
+                        self.online_users = new_online
+                        self.root.after(0, self._update_peer_presence_ui)
+            except Exception:
+                pass
+            finally:
+                if self.root and hasattr(self.root, "after"):
+                    try:
+                        self.root.after(2000, self._poll_presence)
+                    except Exception:
+                        pass
+        threading.Thread(target=poll_worker, daemon=True).start()
 
     # --------------------------------------------------------------------------
     # Messaging, 150MB Media & Voice Note Upload
@@ -1407,8 +1484,9 @@ class UnderWrapsClientGUI:
         hdr_txt_box.pack(side=tk.LEFT)
         
         tk.Label(hdr_txt_box, text=f"@{self.active_peer['username']}", font=("Segoe UI", 11, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(anchor="w")
-        halo_meta = derive_peer_halo(self.active_peer["username"])
-        tk.Label(hdr_txt_box, text=f"● E2EE Verified • {halo_meta['fingerprint_short']}", font=("Segoe UI", 8), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(anchor="w")
+        self.lbl_peer_presence = tk.Label(hdr_txt_box, text="", font=("Segoe UI", 8), bg=BG_SIDEBAR)
+        self.lbl_peer_presence.pack(anchor="w")
+        self._update_peer_presence_ui()
         
         self.btn_call.pack(side=tk.RIGHT)
         

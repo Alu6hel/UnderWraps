@@ -87,7 +87,7 @@ class TestAutoDiscoveryAndAuthResume(unittest.TestCase):
             "session_token": "sess_client_test_token_999",
             "username": "client_tester",
             "user_id": "usr_client123",
-            "email": "client_tester@sovereign.local",
+            "email": "client_tester@underwraps.local",
             "display_name": "Client Tester",
             "identity_key_pub": "pk_client_test",
             "two_factor_enabled": False

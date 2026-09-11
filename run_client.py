@@ -1,6 +1,6 @@
 """
 ==============================================================================
-UnderWraps Sovereign Client Messenger Launcher
+UnderWraps Client Messenger Launcher
 Runs the Windows 11 Fluent Dark Private Messaging Client.
 
 Sole Founder, Originator & Chief Architect: David Anthony Jones ("Alu")
@@ -25,7 +25,7 @@ from src.client.desktop_client_app import UnderWrapsClientGUI
 def main():
     import argparse
     import urllib.parse
-    parser = argparse.ArgumentParser(description="UnderWraps Sovereign Client")
+    parser = argparse.ArgumentParser(description="UnderWraps Client")
     parser.add_argument("--server", type=str, default="http://192.168.50.179:8080", help="Remote Server HTTP address (e.g. http://192.168.50.179:8080)")
     args, _ = parser.parse_known_args()
 
