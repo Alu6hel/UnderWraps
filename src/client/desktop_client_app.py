@@ -1063,7 +1063,7 @@ class UnderWrapsClientGUI:
         elif event_type == "CALL_INCOMING":
             self.root.after(0, self._show_incoming_call_modal, msg)
 
-        elif event_type == "CALL_ACCEPTED":
+        elif event_type in ("CALL_ACCEPTED", "CALL_ANSWER"):
             self.root.after(0, self._on_call_connected, msg)
 
         elif event_type == "CALL_TERMINATED":
@@ -1181,7 +1181,10 @@ class UnderWrapsClientGUI:
             "type": "CALL_INVITE",
             "call_id": self.active_call_id,
             "caller_id": self.current_user["user_id"],
-            "callee_id": self.active_peer["user_id"]
+            "caller_username": self.current_user.get("username", "alu"),
+            "callee_id": self.active_peer["user_id"],
+            "recipient_id": self.active_peer["user_id"],
+            "call_type": "VOICE_48KHZ"
         })
 
     def _show_incoming_call_modal(self, msg: Dict[str, Any]):
