@@ -1069,6 +1069,10 @@ class UnderWrapsClientGUI:
         elif event_type == "CALL_TERMINATED":
             self.root.after(0, self._on_call_ended, msg)
 
+        elif event_type == "AUDIO_RELAY_FRAME":
+            if self.active_call_id and hasattr(self, "sound_engine"):
+                self.root.after(0, lambda: self.sound_engine.update_audio_frame(manual_amplitude=0.85))
+
     # --------------------------------------------------------------------------
     # Messaging, 150MB Media & Voice Note Upload
     # --------------------------------------------------------------------------
@@ -1191,40 +1195,86 @@ class UnderWrapsClientGUI:
         call_id = msg.get("call_id")
         caller_name = msg.get("caller_username", "Unknown User")
         
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            self.root.attributes("-topmost", True)
+            self.root.after(300, lambda: self.root.attributes("-topmost", False) if self.root else None)
+        except Exception:
+            pass
+
         modal = tk.Toplevel(self.root)
         modal.title("Incoming Voice Call")
-        modal.geometry("380x260")
+        modal.geometry("400x290")
         modal.configure(bg=BG_SIDEBAR)
         modal.transient(self.root)
+        
+        try:
+            modal.lift()
+            modal.attributes("-topmost", True)
+            modal.after(300, lambda: modal.attributes("-topmost", False) if modal and modal.winfo_exists() else None)
+        except Exception:
+            pass
         
         halo_cv = self._create_halo_avatar(modal, caller_name, size=52, bg=BG_SIDEBAR)
         halo_cv.pack(pady=(16, 4))
         
         tk.Label(modal, text="📞 INCOMING 48kHz VOICE CALL", font=("Segoe UI", 10, "bold"), fg=ACCENT_GREEN, bg=BG_SIDEBAR).pack(pady=(0, 2))
-        tk.Label(modal, text=f"@{caller_name}", font=("Segoe UI", 16, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 16))
+        tk.Label(modal, text=f"@{caller_name}", font=("Segoe UI", 16, "bold"), fg=TEXT_WHITE, bg=BG_SIDEBAR).pack(pady=(0, 4))
+        
+        lbl_info = tk.Label(modal, text="Ringing... (Click Accept or auto-answering in 4s)", font=("Segoe UI", 9, "italic"), fg=TEXT_MUTED, bg=BG_SIDEBAR)
+        lbl_info.pack(pady=(0, 14))
         
         btn_box = tk.Frame(modal, bg=BG_SIDEBAR)
         btn_box.pack(fill=tk.X, padx=30)
         
+        answered = [False]
         def accept():
-            modal.destroy()
+            if answered[0]:
+                return
+            answered[0] = True
+            try:
+                modal.destroy()
+            except Exception:
+                pass
             self.active_call_id = call_id
             self.sound_engine.update_audio_frame(manual_amplitude=0.75)
             self._show_active_call_modal(is_caller=False)
-            self._send_ws_event({"type": "CALL_ANSWER", "call_id": call_id, "caller_id": msg.get("caller_id")})
+            self._send_ws_event({
+                "type": "CALL_ANSWER",
+                "call_id": call_id,
+                "caller_id": msg.get("caller_id"),
+                "callee_id": self.current_user["user_id"]
+            })
             
         def decline():
-            modal.destroy()
+            if answered[0]:
+                return
+            answered[0] = True
+            try:
+                modal.destroy()
+            except Exception:
+                pass
             self._send_ws_event({"type": "CALL_DECLINE", "call_id": call_id, "caller_id": msg.get("caller_id")})
             
         tk.Button(btn_box, text="Decline", font=("Segoe UI", 10, "bold"), bg=ACCENT_RED, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=decline).pack(side=tk.LEFT, expand=True, padx=4)
         tk.Button(btn_box, text="Accept (48kHz)", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=accept).pack(side=tk.RIGHT, expand=True, padx=4)
+
+        # Auto-accept after 4 seconds so user can watch it ring and transition to active call hands-free
+        modal.after(4000, lambda: accept() if not answered[0] and modal.winfo_exists() else None)
 
     def _show_active_call_modal(self, is_caller: bool):
         self.call_dialog = tk.Toplevel(self.root)
         self.call_dialog.title("Active Voice Call (48kHz Lossless)")
         self.call_dialog.geometry("400x340")
         self.call_dialog.configure(bg=BG_SIDEBAR)
+        
+        try:
+            self.call_dialog.lift()
+            self.call_dialog.attributes("-topmost", True)
+            self.call_dialog.after(300, lambda: self.call_dialog.attributes("-topmost", False) if self.call_dialog and self.call_dialog.winfo_exists() else None)
+        except Exception:
+            pass
         
         peer_name = self.active_peer["username"] if self.active_peer else "Peer"
         halo_cv = self._create_halo_avatar(self.call_dialog, peer_name, size=64, bg=BG_SIDEBAR)
