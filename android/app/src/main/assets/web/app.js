@@ -20,30 +20,73 @@ let API_BASE = localStorage.getItem('underwraps_server_http') || (window.locatio
 let WS_URL = deriveWsUrl(API_BASE);
 const MAX_FILE_BYTES = 157286400; // 150MB
 
+window.__onServerDiscovered = function(httpUrl, wsUrl) {
+    console.log('[UnderWrapsNative] Discovered server signal:', httpUrl, wsUrl);
+    if (httpUrl) {
+        API_BASE = httpUrl;
+        WS_URL = wsUrl || deriveWsUrl(API_BASE);
+        localStorage.setItem('underwraps_server_http', API_BASE);
+        updateServerDisplays();
+        probeServerStatus();
+        if (currentUser) {
+            initWebSocket();
+            loadConversations();
+        } else {
+            checkCachedSession();
+        }
+    }
+};
+
 async function autoDetectServer() {
+    // 1. Query Native Android Bridge if available
     try {
-        const testResp = await fetch(`${API_BASE}/api/v1/health`, { signal: AbortSignal.timeout(600) });
-        if (testResp.ok) {
-            updateServerDisplays();
-            probeServerStatus();
-            return;
+        if (window.UnderWrapsNative && typeof window.UnderWrapsNative.getDiscoveredServerUrl === 'function') {
+            const nativeUrl = window.UnderWrapsNative.getDiscoveredServerUrl();
+            if (nativeUrl) {
+                const resp = await fetch(`${nativeUrl}/api/v1/health`, { signal: AbortSignal.timeout(1200) });
+                if (resp.ok) {
+                    API_BASE = nativeUrl;
+                    WS_URL = deriveWsUrl(API_BASE);
+                    localStorage.setItem('underwraps_server_http', API_BASE);
+                    updateServerDisplays();
+                    probeServerStatus();
+                    return API_BASE;
+                }
+            }
         }
     } catch(e) {}
 
-    const candidates = ['http://192.168.50.179:8080'];
+    // 2. Test current API_BASE
+    try {
+        const testResp = await fetch(`${API_BASE}/api/v1/health`, { signal: AbortSignal.timeout(1000) });
+        if (testResp.ok) {
+            updateServerDisplays();
+            probeServerStatus();
+            return API_BASE;
+        }
+    } catch(e) {}
+
+    // 3. Test comprehensive candidates
+    const candidates = [
+        'http://192.168.50.179:8080',
+        'http://10.0.2.2:8080',
+        'http://localhost:8080',
+        'http://127.0.0.1:8080'
+    ];
     for (const cand of candidates) {
         try {
-            const resp = await fetch(`${cand}/api/v1/health`, { signal: AbortSignal.timeout(600) });
+            const resp = await fetch(`${cand}/api/v1/health`, { signal: AbortSignal.timeout(1000) });
             if (resp.ok) {
                 API_BASE = cand;
                 WS_URL = deriveWsUrl(API_BASE);
                 localStorage.setItem('underwraps_server_http', API_BASE);
                 updateServerDisplays();
                 probeServerStatus();
-                return;
+                return API_BASE;
             }
         } catch(e) {}
     }
+    return API_BASE;
 }
 autoDetectServer();
 
@@ -500,40 +543,94 @@ function updateSensitivity(val) {
     if (lbl) lbl.innerText = `${soundSensitivity.toFixed(1)}x`;
 }
 
-// 6. WebSocket Real-Time Sync
+// 6. WebSocket Real-Time Sync & Resilient Auto-Reconnect
+let wsReconnectTimer = null;
+let wsReconnectAttempts = 0;
+
 function initWebSocket() {
-    ws = new WebSocket(WS_URL);
+    if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+    }
+    if (ws) {
+        try {
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.close();
+        } catch(e) {}
+        ws = null;
+    }
+
+    try {
+        ws = new WebSocket(WS_URL);
+    } catch(err) {
+        console.warn('Failed to construct WebSocket:', err);
+        scheduleWsReconnect();
+        return;
+    }
+
     ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'AUTH', user_id: currentUser.user_id }));
+        console.log('[UnderWraps] WebSocket connected to', WS_URL);
+        wsReconnectAttempts = 0;
+        if (currentUser && (currentUser.user_id || currentUser.id)) {
+            ws.send(JSON.stringify({ type: 'AUTH', user_id: currentUser.user_id || currentUser.id }));
+        }
+    };
+
+    ws.onclose = (ev) => {
+        console.warn('[UnderWraps] WebSocket closed, scheduling auto-reconnect...', ev);
+        scheduleWsReconnect();
+    };
+
+    ws.onerror = (err) => {
+        console.warn('[UnderWraps] WebSocket error, scheduling auto-reconnect...', err);
+        scheduleWsReconnect();
     };
 
     ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'NEW_MESSAGE') {
-            if (msg.message.conversation_id === activeConvId) {
-                renderMessageBubble(msg.message);
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'NEW_MESSAGE') {
+                if (msg.message && msg.message.conversation_id === activeConvId) {
+                    renderMessageBubble(msg.message);
+                }
+                loadConversations();
+                
+                // Trigger push notification if permitted and in background
+                if (window.Notification && Notification.permission === 'granted' && document.hidden) {
+                    try {
+                        new Notification(`UnderWraps: @${msg.message.sender_username || 'Peer'}`, {
+                            body: msg.message.ciphertext ? msg.message.ciphertext.slice(0, 80) : 'New encrypted message',
+                            icon: './assets/logo/dark alu company logo.svg'
+                        });
+                    } catch (e) {}
+                }
+            } else if (msg.type === 'CALL_OFFER' || msg.type === 'CALL_INCOMING' || msg.type === 'CALL_INVITE') {
+                showIncomingCall(msg);
+            } else if (msg.type === 'CALL_ANSWER' || msg.type === 'CALL_ACCEPTED') {
+                handleCallAnswer(msg);
+            } else if (msg.type === 'ICE_CANDIDATE' || msg.type === 'CALL_ICE_CANDIDATE') {
+                handleIceCandidate(msg);
+            } else if (msg.type === 'CALL_HANGUP' || msg.type === 'CALL_TERMINATED' || msg.type === 'CALL_DECLINE') {
+                handleCallHangup(msg);
             }
-            loadConversations();
-            
-            // Trigger push notification if permitted and in background
-            if (window.Notification && Notification.permission === 'granted' && document.hidden) {
-                try {
-                    new Notification(`UnderWraps: @${msg.message.sender_username || 'Peer'}`, {
-                        body: msg.message.ciphertext ? msg.message.ciphertext.slice(0, 80) : 'New encrypted message',
-                        icon: './assets/logo/dark alu company logo.svg'
-                    });
-                } catch (e) {}
-            }
-        } else if (msg.type === 'CALL_OFFER' || msg.type === 'CALL_INCOMING' || msg.type === 'CALL_INVITE') {
-            showIncomingCall(msg);
-        } else if (msg.type === 'CALL_ANSWER' || msg.type === 'CALL_ACCEPTED') {
-            handleCallAnswer(msg);
-        } else if (msg.type === 'ICE_CANDIDATE' || msg.type === 'CALL_ICE_CANDIDATE') {
-            handleIceCandidate(msg);
-        } else if (msg.type === 'CALL_HANGUP' || msg.type === 'CALL_TERMINATED' || msg.type === 'CALL_DECLINE') {
-            handleCallHangup(msg);
+        } catch(e) {
+            console.error('Error handling WebSocket message:', e);
         }
     };
+}
+
+function scheduleWsReconnect() {
+    if (wsReconnectTimer) return;
+    const delay = Math.min(1000 * Math.pow(1.5, wsReconnectAttempts), 8000);
+    wsReconnectAttempts++;
+    wsReconnectTimer = setTimeout(() => {
+        wsReconnectTimer = null;
+        if (currentUser) {
+            console.log(`[UnderWraps] Reconnecting WebSocket (attempt ${wsReconnectAttempts})...`);
+            initWebSocket();
+        }
+    }, delay);
 }
 
 let allConversationItems = [];
@@ -657,6 +754,14 @@ async function loadConversations() {
 
     allConversationItems = unifiedList;
     renderFilteredConversations();
+
+    // Auto-select primary conversation (e.g. with @alu) on initial launch
+    if (!activeConvId && unifiedList.length > 0) {
+        const aluConv = unifiedList.find(c => c.peer_username === 'alu') || unifiedList[0];
+        if (aluConv) {
+            selectConversation(aluConv);
+        }
+    }
 
     // Ensure layout view matches current state
     const layout = document.querySelector('.messenger-layout');
@@ -1935,9 +2040,10 @@ function renderCyberAuroraMatrix(w, h, effAmp, speedMult) {
 }
 
 // Initialize on DOM load
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     initLiveThemeEngine();
     updateServerDisplays();
+    await autoDetectServer();
     probeServerStatus();
-    checkCachedSession();
+    await checkCachedSession();
 });

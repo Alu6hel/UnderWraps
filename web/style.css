@@ -517,9 +517,38 @@ input:focus { border-color: var(--accent-blue); }
     align-items: center;
     justify-content: space-between;
     padding: 0 18px;
+.chat-header h2 { font-size: 15px; margin: 0; }
+
+.chat-peer-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 
-.chat-header h2 { font-size: 15px; }
+.chat-peer-info h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.peer-status {
+    font-size: 11px;
+    color: var(--accent-green);
+    line-height: 1.2;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
 .btn-call {
     background-color: #1a3b2b;
     color: var(--accent-green);
@@ -909,8 +938,12 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
 }
 
 .alu-logo-badge-small {
-    width: 32px;
-    height: 32px;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
     border-radius: 8px;
     padding: 1.5px;
     background: linear-gradient(135deg, #3b82f6, #6366f1, #22d3ee);
@@ -919,11 +952,12 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .alu-logo-inner-small {
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    height: 100% !important;
     border-radius: 6.5px;
     background: #0c101a;
     display: flex;
@@ -931,6 +965,17 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
     justify-content: center;
     padding: 3.5px;
     overflow: hidden;
+}
+
+.alu-logo-badge-small .alu-logo-img {
+    width: 24px !important;
+    height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .alu-logo-img {
