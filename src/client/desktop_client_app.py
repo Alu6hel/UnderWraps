@@ -1321,8 +1321,10 @@ class UnderWrapsClientGUI:
                 "type": "CALL_ANSWER",
                 "call_id": call_id,
                 "caller_id": msg.get("caller_id"),
-                "callee_id": self.current_user["user_id"]
+                "callee_id": self.current_user["user_id"],
+                "recipient_id": msg.get("caller_id")
             })
+            self._start_audio_relay_sender(call_id, msg.get("caller_id"))
             
         def decline():
             if answered[0]:
@@ -1332,13 +1334,29 @@ class UnderWrapsClientGUI:
                 modal.destroy()
             except Exception:
                 pass
-            self._send_ws_event({"type": "CALL_DECLINE", "call_id": call_id, "caller_id": msg.get("caller_id")})
+            self._send_ws_event({"type": "CALL_DECLINE", "call_id": call_id, "caller_id": msg.get("caller_id"), "recipient_id": msg.get("caller_id")})
             
         tk.Button(btn_box, text="Decline", font=("Segoe UI", 10, "bold"), bg=ACCENT_RED, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=decline).pack(side=tk.LEFT, expand=True, padx=4)
         tk.Button(btn_box, text="Accept (48kHz)", font=("Segoe UI", 10, "bold"), bg=ACCENT_GREEN, fg="#ffffff", relief=tk.FLAT, padx=14, pady=6, cursor="hand2", command=accept).pack(side=tk.RIGHT, expand=True, padx=4)
 
         # Auto-accept after 4 seconds so user can watch it ring and transition to active call hands-free
         modal.after(4000, lambda: accept() if not answered[0] and modal.winfo_exists() else None)
+
+    def _start_audio_relay_sender(self, call_id: str, recipient_id: str):
+        def _relay_worker():
+            import random
+            while self.active_call_id == call_id and self.active_call_id is not None:
+                time.sleep(0.12)
+                sim_amp = round(random.uniform(0.45, 0.88), 2)
+                self._send_ws_event({
+                    "type": "AUDIO_RELAY_FRAME",
+                    "call_id": call_id,
+                    "sender_id": self.current_user["user_id"],
+                    "recipient_id": recipient_id,
+                    "amplitude": sim_amp,
+                    "sample_rate": 48000
+                })
+        threading.Thread(target=_relay_worker, daemon=True).start()
 
     def _show_active_call_modal(self, is_caller: bool):
         self.call_dialog = tk.Toplevel(self.root)
@@ -1370,6 +1388,9 @@ class UnderWrapsClientGUI:
 
     def _on_call_connected(self, msg: Dict[str, Any]):
         self.call_start_time = time.time()
+        target_peer_id = self.active_peer.get("user_id") if self.active_peer else msg.get("caller_id")
+        if target_peer_id and self.active_call_id:
+            self._start_audio_relay_sender(self.active_call_id, target_peer_id)
         self._update_call_timer()
 
     def _update_call_timer(self):

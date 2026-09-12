@@ -204,7 +204,11 @@
             <h3>HIGH-QUALITY 48kHz VOICE CALL</h3>
             <h1 id="call-peer-name">@peer</h1>
             <p id="call-timer">Calling...</p>
+            <div id="call-audio-meter-wrap" class="call-audio-meter-wrap hidden">
+                <div id="call-audio-meter" class="call-audio-meter"></div>
+            </div>
             <div id="call-controls-active" class="call-controls">
+                <button id="btn-call-mute" class="btn-call-secondary" onclick="toggleCallMute()">🎙️ Mute</button>
                 <button class="btn-end-call" onclick="endVoiceCall()">End Call</button>
             </div>
             <div id="call-controls-incoming" class="call-controls hidden" style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
