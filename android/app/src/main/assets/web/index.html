@@ -405,14 +405,22 @@
             </div>
 
     <!-- 6. New DM Conversation Modal -->
-    <div id="modal-new-chat" class="modal-overlay hidden">
-        <div class="modal-card" style="width: 440px; max-height: 80vh; display: flex; flex-direction: column;">
-            <h3>➕ Start Direct Conversation</h3>
-            <p class="setting-desc" style="margin-bottom: 12px;">Select a registered private peer to begin chatting.</p>
+    <div id="modal-new-chat" class="modal-overlay hidden" onclick="if(event.target === this) closeNewChatModal();">
+        <div class="modal-card" style="width: 440px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">➕ Start Direct Message</h3>
+                <button type="button" class="icon-btn" onclick="closeNewChatModal()" title="Close" style="font-size: 16px;">✕</button>
+            </div>
+            <p class="setting-desc" style="margin-bottom: 14px;">Enter a username or select a registered peer to initiate an end-to-end encrypted channel.</p>
             
-            <input type="text" id="new-chat-search-input" placeholder="Search by @username..." oninput="filterNewChatUsers()" style="margin-bottom: 12px;">
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="new-chat-search-input" placeholder="Enter or search @username..." oninput="filterNewChatUsers()" onkeydown="handleNewChatKey(event)" style="flex: 1; margin-bottom: 0;">
+                <button id="btn-create-dm-direct" class="btn-primary" style="width: auto; padding: 0 16px; font-size: 13px; font-weight: 600; white-space: nowrap;" onclick="startDirectMessageFromInput()">Chat</button>
+            </div>
+
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Available Peers & Contacts</div>
             
-            <div id="new-chat-user-list" style="flex: 1; overflow-y: auto; max-height: 280px; display: flex; flex-direction: column; gap: 6px;">
+            <div id="new-chat-user-list" style="flex: 1; overflow-y: auto; max-height: 260px; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
                 <p style="text-align: center; color: var(--text-muted); font-size: 12px;">Loading users...</p>
             </div>
 

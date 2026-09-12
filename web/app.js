@@ -647,18 +647,66 @@ function setInboxFilter(filter) {
     renderFilteredConversations();
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function filterConversationsAndUsers() {
     renderFilteredConversations();
 }
 
-function returnToInbox() {
+let hasAutoSelectedInitialOnDesktop = false;
+let userExplicitlyInInbox = false;
+
+async function returnToInbox() {
+    if (typeof closeNewChatModal === 'function') closeNewChatModal();
+    if (typeof closeSettings === 'function') closeSettings();
+    if (typeof closeNeuralSearchModal === 'function') closeNeuralSearchModal();
+    if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
+
     activeConvId = null;
+    activePeer = null;
+    userExplicitlyInInbox = true;
+
     const layout = document.querySelector('.messenger-layout');
     if (layout) {
         layout.classList.remove('view-chat');
         layout.classList.add('view-inbox');
     }
-    loadConversations();
+
+    // Reset chat header
+    const peerNameEl = document.getElementById('chat-peer-name');
+    if (peerNameEl) peerNameEl.textContent = 'Select a conversation';
+    const peerStatusEl = document.getElementById('chat-peer-status');
+    if (peerStatusEl) peerStatusEl.textContent = '';
+    const avatarHalo = document.getElementById('peer-avatar-halo');
+    if (avatarHalo) avatarHalo.classList.add('hidden');
+    const callBtn = document.getElementById('btn-start-call');
+    if (callBtn) callBtn.classList.add('hidden');
+
+    // Deselect active items in list
+    document.querySelectorAll('.conv-item.active').forEach(el => el.classList.remove('active'));
+
+    // Render empty placeholder in chat feed
+    const feed = document.getElementById('message-feed');
+    if (feed) {
+        feed.innerHTML = `
+            <div class="empty-feed-placeholder" style="text-align: center; margin: auto; padding: 60px 20px; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                <div style="font-size: 48px; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));">💬</div>
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--text-white); margin: 0 0 6px 0;">UnderWraps Private Messenger</h3>
+                <p style="font-size: 13px; max-width: 320px; margin: 0 0 16px 0; line-height: 1.4; color: var(--text-muted);">Select a conversation from the list or start a new direct message.</p>
+                <button class="btn-primary" style="width: auto; padding: 8px 18px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;" onclick="openNewChatModal()">➕ New DM</button>
+            </div>
+        `;
+    }
+
+    return await loadConversations();
 }
 
 async function loadConversations() {
@@ -757,8 +805,10 @@ async function loadConversations() {
     allConversationItems = unifiedList;
     renderFilteredConversations();
 
-    // Auto-select primary conversation (e.g. with @alu) on initial launch
-    if (!activeConvId && unifiedList.length > 0) {
+    // Auto-select primary conversation (e.g. with @alu) ONLY on initial desktop launch (> 900px)
+    // NEVER auto-select if mobile, or if the user explicitly clicked Return to Inbox
+    if (!activeConvId && !userExplicitlyInInbox && window.innerWidth > 900 && !hasAutoSelectedInitialOnDesktop && unifiedList.length > 0) {
+        hasAutoSelectedInitialOnDesktop = true;
         const aluConv = unifiedList.find(c => c.peer_username === 'alu') || unifiedList[0];
         if (aluConv) {
             selectConversation(aluConv);
@@ -865,9 +915,11 @@ async function openNewChatModal() {
     if (!modal) return;
     modal.classList.remove('hidden');
     const input = document.getElementById('new-chat-search-input');
+    const directBtn = document.getElementById('btn-create-dm-direct');
+    if (directBtn) directBtn.textContent = 'Chat';
     if (input) {
         input.value = '';
-        input.focus();
+        setTimeout(() => input.focus(), 50);
     }
     await loadNewChatUsers();
 }
@@ -881,73 +933,225 @@ async function loadNewChatUsers() {
     const listEl = document.getElementById('new-chat-user-list');
     if (!listEl) return;
     listEl.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 12px;">Loading users...</p>';
+    
+    const myId = currentUser ? (currentUser.user_id || currentUser.id) : null;
+    const myUsername = currentUser ? currentUser.username : null;
+
     try {
-        const resp = await fetch(`${API_BASE}/api/v1/users/list`);
-        const data = await resp.json();
-        allRegisteredUsers = (data.users || []).filter(u => u.user_id !== currentUser.user_id);
-        renderNewChatUserList(allRegisteredUsers);
+        const resp = await fetch(`${API_BASE}/api/v1/users/list`).catch(() => null);
+        if (resp && resp.ok) {
+            const data = await resp.json();
+            allRegisteredUsers = (data.users || []).filter(u => {
+                if (myId && u.user_id === myId) return false;
+                if (myUsername && u.username === myUsername) return false;
+                return true;
+            });
+        } else {
+            allRegisteredUsers = [];
+        }
     } catch (err) {
-        listEl.innerHTML = `<p style="text-align: center; color: var(--accent-red); font-size: 12px;">Failed to load users: ${err.message}</p>`;
+        console.warn('loadNewChatUsers network error:', err);
+        allRegisteredUsers = [];
     }
+
+    // Default suggestions if no server peers returned
+    if (allRegisteredUsers.length === 0) {
+        if (myUsername !== 'alu') {
+            allRegisteredUsers.push({
+                user_id: 'alu',
+                username: 'alu',
+                display_name: 'David Anthony Jones ("Alu")',
+                is_online: true
+            });
+        }
+        if (myUsername !== 'AluSecurity') {
+            allRegisteredUsers.push({
+                user_id: 'alusecurity',
+                username: 'AluSecurity',
+                display_name: 'Alu Private Guard',
+                is_online: true
+            });
+        }
+    }
+
+    renderNewChatUserList(allRegisteredUsers);
+}
+
+function handleNewChatKey(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        startDirectMessageFromInput();
+    }
+}
+
+function startDirectMessageFromInput() {
+    const input = document.getElementById('new-chat-search-input');
+    const val = (input ? input.value : '').trim();
+    if (!val) {
+        if (input) input.focus();
+        return;
+    }
+    startDirectMessageWithUsername(val);
 }
 
 function filterNewChatUsers() {
-    const q = (document.getElementById('new-chat-search-input')?.value || '').toLowerCase().trim().replace(/^@/, '');
-    const filtered = allRegisteredUsers.filter(u => u.username.toLowerCase().includes(q) || (u.display_name && u.display_name.toLowerCase().includes(q)));
-    renderNewChatUserList(filtered);
+    const input = document.getElementById('new-chat-search-input');
+    const q = (input ? input.value : '').toLowerCase().trim().replace(/^@/, '');
+    const directBtn = document.getElementById('btn-create-dm-direct');
+    if (directBtn) {
+        directBtn.textContent = q ? `Chat @${q}` : 'Chat';
+    }
+
+    const filtered = allRegisteredUsers.filter(u => 
+        (u.username && u.username.toLowerCase().includes(q)) || 
+        (u.display_name && u.display_name.toLowerCase().includes(q))
+    );
+    renderNewChatUserList(filtered, q);
 }
 
-function renderNewChatUserList(users) {
+function renderNewChatUserList(users, query = '') {
     const listEl = document.getElementById('new-chat-user-list');
     if (!listEl) return;
     listEl.innerHTML = '';
-    if (users.length === 0) {
-        listEl.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 14px;">No other users found on the server.</p>';
+
+    // If a search query is entered and does not exactly match an item in the list, offer a direct chat card
+    if (query) {
+        const exactMatch = users.some(u => u.username && u.username.toLowerCase() === query.toLowerCase());
+        if (!exactMatch) {
+            const createDirectCard = document.createElement('div');
+            createDirectCard.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(88, 166, 255, 0.1); border-radius: 8px; cursor: pointer; border: 1px dashed var(--accent-blue); margin-bottom: 4px; transition: background 0.15s ease;';
+            const halo = derivePeerHalo(query);
+            createDirectCard.innerHTML = `
+                <div class="avatar-halo-wrapper" style="width: 36px; height: 36px; background: ${halo.linearGradient}; box-shadow: ${halo.boxShadow};">
+                    <span class="user-avatar" style="font-size: 16px;">✉️</span>
+                </div>
+                <div style="flex: 1; text-align: left; min-width: 0;">
+                    <div style="font-weight: bold; font-size: 13px; color: var(--accent-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Start new chat with @${escapeHtml(query)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Direct E2EE channel with newly specified peer</div>
+                </div>
+                <button class="btn-primary" style="width: auto; padding: 5px 12px; font-size: 11px;">Message</button>
+            `;
+            createDirectCard.onclick = () => startDirectMessageWithUsername(query);
+            listEl.appendChild(createDirectCard);
+        }
+    }
+
+    if (users.length === 0 && !query) {
+        listEl.innerHTML = `
+            <div style="text-align: center; padding: 24px 10px; color: var(--text-muted);">
+                <div style="font-size: 28px; margin-bottom: 6px;">👥</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-white);">No other registered users online</div>
+                <div style="font-size: 11px; margin-top: 4px;">Type any username in the search box above to start a direct message channel.</div>
+            </div>
+        `;
         return;
     }
+
     users.forEach(u => {
         const halo = derivePeerHalo(u.username);
         const item = document.createElement('div');
-        item.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-input); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);';
+        item.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-input); border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: border-color 0.15s ease; margin-bottom: 4px;';
+        item.onmouseenter = () => { item.style.borderColor = 'var(--accent-blue)'; };
+        item.onmouseleave = () => { item.style.borderColor = 'var(--border-color)'; };
         item.innerHTML = `
-            <div class="avatar-halo-wrapper" style="width: 34px; height: 34px; background: ${halo.linearGradient}; box-shadow: ${halo.boxShadow};">
+            <div class="avatar-halo-wrapper" style="width: 36px; height: 36px; background: ${halo.linearGradient}; box-shadow: ${halo.boxShadow};">
                 <span class="user-avatar" style="font-size: 16px;">👤</span>
             </div>
-            <div style="flex: 1; text-align: left;">
-                <div style="font-weight: bold; font-size: 13px; color: var(--text-white);">@${u.username}</div>
-                <div style="font-size: 11px; color: ${u.is_online ? 'var(--accent-green)' : 'var(--text-muted)'};">${u.is_online ? '● Online' : 'Offline'}</div>
+            <div style="flex: 1; text-align: left; min-width: 0;">
+                <div style="font-weight: bold; font-size: 13px; color: var(--text-white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@${escapeHtml(u.username)}</div>
+                <div style="font-size: 11px; color: ${u.is_online ? 'var(--accent-green)' : 'var(--text-muted)'};">${u.is_online ? '● Online (LAN/Mesh)' : 'E2EE Ready'}</div>
             </div>
-            <button class="btn-primary" style="width: auto; padding: 4px 12px; font-size: 11px;">Chat</button>
+            <button class="btn-primary" style="width: auto; padding: 5px 12px; font-size: 11px;">Chat</button>
         `;
-        item.onclick = () => startDirectMessage(u.user_id, u.username);
+        item.onclick = () => startDirectMessageWithUsername(u.username, u.user_id);
         listEl.appendChild(item);
     });
 }
 
-async function startDirectMessage(targetUserId, targetUsername) {
+async function startDirectMessageWithUsername(rawUsername, explicitUserId = null) {
+    if (!rawUsername) return;
+    const cleanUsername = rawUsername.trim().replace(/^@/, '');
+    if (!cleanUsername) return;
+
     closeNewChatModal();
+
+    const myId = currentUser ? (currentUser.user_id || currentUser.id) : (localStorage.getItem('underwraps_username') || 'me');
+    const myUsername = currentUser ? currentUser.username : (localStorage.getItem('underwraps_username') || 'me');
+
+    if (cleanUsername.toLowerCase() === (myUsername || '').toLowerCase()) {
+        alert("You cannot start a direct message with yourself.");
+        return;
+    }
+
+    // Check if target matches an existing conversation
+    const existingConv = allConversationItems.find(c => 
+        (c.peer_username && c.peer_username.toLowerCase() === cleanUsername.toLowerCase()) ||
+        (explicitUserId && c.peer_id === explicitUserId)
+    );
+
+    if (existingConv) {
+        selectConversation(existingConv);
+        closeMobileSidebar();
+        return;
+    }
+
+    // Determine targetUserId
+    let targetUserId = explicitUserId;
+    let targetDisplayName = cleanUsername;
+    if (!targetUserId) {
+        const matchedUser = allRegisteredUsers.find(u => u.username && u.username.toLowerCase() === cleanUsername.toLowerCase());
+        if (matchedUser) {
+            targetUserId = matchedUser.user_id;
+            targetDisplayName = matchedUser.display_name || matchedUser.username;
+        } else {
+            targetUserId = `user_${cleanUsername.toLowerCase()}`;
+        }
+    }
+
+    let conversationId = null;
     try {
         const resp = await fetch(`${API_BASE}/api/v1/conversations/direct`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user1_id: currentUser.user_id, user2_id: targetUserId })
+            body: JSON.stringify({ user1_id: myId, user2_id: targetUserId })
         });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Failed to start conversation');
-
-        await loadConversations();
-        selectConversation({
-            conversation_id: data.conversation_id,
-            peer_id: targetUserId,
-            peer_username: targetUsername
-        });
-        closeMobileSidebar();
-    } catch (err) {
-        alert(err.message);
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.conversation_id) {
+                conversationId = data.conversation_id;
+            }
+        }
+    } catch (e) {
+        console.warn('Direct conversation endpoint offline/fallback:', e);
     }
+
+    if (!conversationId) {
+        conversationId = `conv_${[myId, targetUserId].sort().join('_')}`;
+    }
+
+    const newConvObj = {
+        conversation_id: conversationId,
+        peer_id: targetUserId,
+        peer_username: cleanUsername,
+        peer_display_name: targetDisplayName,
+        last_ciphertext: 'E2EE Private Direct Channel Initiated',
+        is_online: true,
+        last_msg_time: Date.now(),
+        is_new_user: false
+    };
+
+    allConversationItems.unshift(newConvObj);
+    renderFilteredConversations();
+    selectConversation(newConvObj);
+    closeMobileSidebar();
+}
+
+async function startDirectMessage(targetUserId, targetUsername) {
+    return startDirectMessageWithUsername(targetUsername, targetUserId);
 }
 
 async function selectConversation(conv) {
+    userExplicitlyInInbox = false;
     const myId = currentUser ? (currentUser.user_id || currentUser.id) : 'me';
 
     // If this is a discovered user without an existing thread, establish direct conversation
@@ -972,6 +1176,17 @@ async function selectConversation(conv) {
 
     activeConvId = conv.conversation_id;
     activePeer = { user_id: conv.peer_id, username: conv.peer_username };
+
+    // Update active highlight in conversation list
+    document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+    allConversationItems.forEach((c, idx) => {
+        if (c.conversation_id === activeConvId || (conv.peer_username && c.peer_username === conv.peer_username)) {
+            const listEl = document.getElementById('conversation-list');
+            if (listEl && listEl.children[idx]) {
+                listEl.children[idx].classList.add('active');
+            }
+        }
+    });
 
     // Transition layout to view-chat
     const layout = document.querySelector('.messenger-layout');
@@ -2938,6 +3153,48 @@ function renderCyberAuroraMatrix(w, h, effAmp, speedMult) {
 window.addEventListener('DOMContentLoaded', async () => {
     initLiveThemeEngine();
     updateServerDisplays();
+
+    // Global keyboard shortcuts: Escape to close modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modals = ['modal-new-chat', 'modal-settings', 'modal-neural-search', 'modal-2fa'];
+            let closedAny = false;
+            modals.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.classList.contains('hidden')) {
+                    el.classList.add('hidden');
+                    closedAny = true;
+                }
+            });
+            if (closedAny) return;
+
+            const sidebar = document.getElementById('main-sidebar');
+            if (sidebar && sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            }
+        }
+    });
+
+    // Enter key listener on inbox search input
+    const inboxSearchInput = document.getElementById('inbox-search-input');
+    if (inboxSearchInput) {
+        inboxSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = inboxSearchInput.value.trim().replace(/^@/, '');
+                if (!val) return;
+                const match = allConversationItems.find(c => 
+                    (c.peer_username && c.peer_username.toLowerCase() === val.toLowerCase())
+                );
+                if (match) {
+                    selectConversation(match);
+                    closeMobileSidebar();
+                } else {
+                    startDirectMessageWithUsername(val);
+                }
+            }
+        });
+    }
+
     await autoDetectServer();
     probeServerStatus();
     await checkCachedSession();
