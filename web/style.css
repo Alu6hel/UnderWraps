@@ -870,22 +870,31 @@ input:focus { border-color: var(--accent-blue); }
 
 .settings-tabs {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 16px;
     overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.settings-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .settings-tab-btn {
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 8px 12px;
+    padding: 8px 4px;
     cursor: pointer;
     white-space: nowrap;
     border-bottom: 2px solid transparent;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    transition: color 0.15s, border-color 0.15s;
 }
 
 .settings-tab-btn.active {

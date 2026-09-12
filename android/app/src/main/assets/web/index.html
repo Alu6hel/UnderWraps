@@ -244,8 +244,8 @@
             <!-- Settings Tabs -->
             <div class="settings-tabs">
                 <button id="tab-btn-themes" class="settings-tab-btn active" onclick="switchSettingsTab('themes')">🎨 Themes</button>
-                <button id="tab-btn-identity" class="settings-tab-btn" onclick="switchSettingsTab('identity')">🔒 Identity & Halo</button>
-                <button id="tab-btn-perms" class="settings-tab-btn" onclick="switchSettingsTab('permissions')">🎙️ Permissions</button>
+                <button id="tab-btn-identity" class="settings-tab-btn" onclick="switchSettingsTab('identity')">🔒 Identity</button>
+                <button id="tab-btn-perms" class="settings-tab-btn" onclick="switchSettingsTab('permissions')">🎙️ Perms</button>
                 <button id="tab-btn-server" class="settings-tab-btn" onclick="switchSettingsTab('server')">🌐 Server</button>
             </div>
 
@@ -342,30 +342,33 @@
                     </div>
 
                     <div class="setting-row">
-                        <div>
+                        <div style="flex: 1;">
                             <strong>Live Mic VU Meter & Audio Test</strong>
-                            <p class="setting-desc">Speak to test audio sensitivity in real-time.</p>
+                            <p class="setting-desc">Speak or tap Test to verify real-time 48kHz audio I/O.</p>
+                            <div class="vu-meter-bar" style="margin-top: 8px;">
+                                <div id="vu-meter-fill" class="vu-meter-fill"></div>
+                            </div>
+                            <span id="audio-test-status" style="font-size: 11px; color: var(--accent-green); margin-top: 4px; display: block;"></span>
                         </div>
-                        <div class="vu-meter-bar">
-                            <div id="vu-meter-fill" class="vu-meter-fill"></div>
-                        </div>
+                        <button id="btn-audio-test" class="btn-secondary" style="width: auto; padding: 6px 12px; margin-left: 12px; align-self: center;" onclick="startAudioHardwareTest()">🔊 Test Audio</button>
                     </div>
 
                     <div class="setting-row">
                         <div>
-                            <strong>Desktop Push Notifications</strong>
+                            <strong>Push & In-App Notifications</strong>
                             <p class="setting-desc">Instant alerts for incoming encrypted messages and voice calls.</p>
                             <span id="badge-perm-notif" class="perm-badge perm-granted">● Checking...</span>
                         </div>
-                        <button class="btn-secondary" style="width: auto; padding: 6px 12px;" onclick="requestNotificationPermission()">Enable Notifications</button>
+                        <button class="btn-secondary" style="width: auto; padding: 6px 12px;" onclick="requestNotificationPermission()">Test Notification</button>
                     </div>
 
                     <div class="setting-row" style="border-bottom: none;">
-                        <div>
+                        <div style="flex: 1;">
                             <strong>150MB Media Attachment Storage</strong>
                             <p class="setting-desc">Secure local cache with SMT-verified 150MB ceiling.</p>
+                            <span id="storage-usage-badge" class="perm-badge perm-granted">● Storage: 0.0 MB / 150 MB</span>
                         </div>
-                        <span class="perm-badge perm-granted">● Active (150MB Guard)</span>
+                        <button id="btn-clear-cache" class="btn-secondary" style="width: auto; padding: 6px 12px; margin-left: 12px; align-self: center;" onclick="clearMediaCache()">🗑️ Clear Cache</button>
                     </div>
                 </div>
 
@@ -375,10 +378,12 @@
                         <label style="font-size: 12px; font-weight: 600;">Server HTTP Base URL</label>
                         <input type="text" id="settings-server-url" value="http://192.168.50.179:8080" style="margin-top: 6px;">
                     </div>
-                    <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: none;">
-                        <button class="btn-primary" style="width: auto; padding: 6px 14px;" onclick="testServerPing()">Test Server Latency</button>
-                        <span id="server-ping-result" style="font-size: 11px; color: var(--accent-green);"></span>
+                    <div class="setting-row" style="display: flex; gap: 8px; align-items: center; border-bottom: none; flex-wrap: wrap;">
+                        <button class="btn-primary" style="flex: 1; padding: 8px 12px; font-size: 12px;" onclick="saveAndReconnectServer()">💾 Save & Connect</button>
+                        <button class="btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 12px;" onclick="testServerPing()">📡 Ping</button>
+                        <button class="btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 12px;" onclick="autoDetectServerUI()">🔍 Auto-Detect</button>
                     </div>
+                    <div id="server-ping-result" style="font-size: 11px; margin-top: 6px; text-align: center; color: var(--accent-green);"></div>
                 </div>
             </div>
 
@@ -403,6 +408,12 @@
             <div id="neural-search-results" style="flex: 1; overflow-y: auto; max-height: 380px; display: flex; flex-direction: column; gap: 8px;">
                 <p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px;">Enter a natural query to compute 128-D vector matches.</p>
             </div>
+
+            <div class="modal-actions" style="margin-top: 14px;">
+                <button type="button" class="btn-secondary" onclick="closeNeuralSearchModal()">Close</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 6. New DM Conversation Modal -->
     <div id="modal-new-chat" class="modal-overlay hidden" onclick="if(event.target === this) closeNewChatModal();">
