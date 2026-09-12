@@ -23,13 +23,21 @@ except ImportError:
 import importlib.util
 
 # Load UnderWrapsServer directly
-server_engine_path = "/home/davidalujones/.gemini/antigravity/scratch/UnderWrapsServer/src/server/server_engine.py"
-spec = importlib.util.spec_from_file_location("server_engine", server_engine_path)
-server_engine = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(server_engine)
-UnderWrapsServer = server_engine.UnderWrapsServer
+potential_paths = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../UnderWrapsServer/src/server/server_engine.py")),
+    "/home/davidalujones/.gemini/antigravity/scratch/UnderWrapsServer/src/server/server_engine.py",
+]
+server_engine_path = next((p for p in potential_paths if os.path.exists(p)), None)
 
-@unittest.skipIf(websockets is None, "websockets package not installed; install with pip or run with uv")
+if server_engine_path:
+    spec = importlib.util.spec_from_file_location("server_engine", server_engine_path)
+    server_engine = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(server_engine)
+    UnderWrapsServer = getattr(server_engine, "UnderWrapsServer", None)
+else:
+    UnderWrapsServer = None
+
+@unittest.skipIf(websockets is None or UnderWrapsServer is None, "websockets package or UnderWrapsServer not available")
 class TestVoiceCallingE2E(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):

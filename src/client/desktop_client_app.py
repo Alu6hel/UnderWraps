@@ -1271,6 +1271,9 @@ class UnderWrapsClientGUI:
     def _show_incoming_call_modal(self, msg: Dict[str, Any]):
         call_id = msg.get("call_id")
         caller_name = msg.get("caller_username", "Unknown User")
+        caller_id = msg.get("caller_id")
+        if not self.active_peer and caller_id:
+            self.active_peer = {"user_id": caller_id, "username": caller_name}
         
         try:
             self.root.deiconify()
@@ -1324,7 +1327,7 @@ class UnderWrapsClientGUI:
                 "callee_id": self.current_user["user_id"],
                 "recipient_id": msg.get("caller_id")
             })
-            self._start_audio_relay_sender(call_id, msg.get("caller_id"))
+            self._on_call_connected(msg)
             
         def decline():
             if answered[0]:
@@ -1343,6 +1346,9 @@ class UnderWrapsClientGUI:
         modal.after(4000, lambda: accept() if not answered[0] and modal.winfo_exists() else None)
 
     def _start_audio_relay_sender(self, call_id: str, recipient_id: str):
+        if hasattr(self, "_active_relay_id") and self._active_relay_id == call_id:
+            return
+        self._active_relay_id = call_id
         def _relay_worker():
             import random
             while self.active_call_id == call_id and self.active_call_id is not None:
@@ -1403,18 +1409,28 @@ class UnderWrapsClientGUI:
             self.root.after(1000, self._update_call_timer)
 
     def _end_voice_call(self):
-        if self.active_call_id and self.active_peer:
-            self._send_ws_event({"type": "CALL_HANGUP", "call_id": self.active_call_id, "caller_id": self.current_user["user_id"], "callee_id": self.active_peer["user_id"]})
+        self._active_relay_id = None
+        target_peer_id = self.active_peer.get("user_id") if self.active_peer else None
+        if self.active_call_id and (target_peer_id or self.active_peer):
+            peer_id = target_peer_id or self.active_peer["user_id"]
+            self._send_ws_event({"type": "CALL_HANGUP", "call_id": self.active_call_id, "caller_id": self.current_user["user_id"], "callee_id": peer_id, "recipient_id": peer_id})
         if self.call_dialog:
-            self.call_dialog.destroy()
+            try:
+                self.call_dialog.destroy()
+            except Exception:
+                pass
             self.call_dialog = None
         self.active_call_id = None
         self.call_start_time = None
         self.sound_engine.update_audio_frame(manual_amplitude=0.0)
 
     def _on_call_ended(self, msg: Dict[str, Any]):
+        self._active_relay_id = None
         if self.call_dialog:
-            self.call_dialog.destroy()
+            try:
+                self.call_dialog.destroy()
+            except Exception:
+                pass
             self.call_dialog = None
         self.active_call_id = None
         self.call_start_time = None
