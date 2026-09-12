@@ -183,13 +183,28 @@
 
                 <!-- Input Area -->
                 <footer class="input-area">
-                    <input type="file" id="file-input" style="display: none;" onchange="handleFileUpload(event)">
-                    <button class="icon-btn" title="Attach Media (Max 150MB)" onclick="document.getElementById('file-input').click()">📎</button>
-                    
-                    <input type="text" id="message-input" placeholder="Type an encrypted message..." autocomplete="off">
-                    
-                    <button id="btn-mic" class="icon-btn mic-btn" title="Hold to Record Voice Note" onclick="toggleVoiceRecording()">🎙️</button>
-                    <button class="btn-send" onclick="sendTextMessage()">Send</button>
+                    <div id="default-input-controls" class="default-input-controls" style="display: flex; width: 100%; align-items: center; gap: 10px;">
+                        <input type="file" id="file-input" style="display: none;" onchange="handleFileUpload(event)">
+                        <button class="icon-btn" title="Attach Media (Max 150MB)" onclick="document.getElementById('file-input').click()">📎</button>
+                        
+                        <input type="text" id="message-input" placeholder="Type an encrypted message..." autocomplete="off">
+                        
+                        <button id="btn-mic" class="icon-btn mic-btn" title="Record Voice Note" onclick="startVoiceNoteRecording()">🎙️</button>
+                        <button id="btn-send-message" class="btn-send" onclick="sendTextMessage()">Send</button>
+                    </div>
+
+                    <div id="voice-recording-studio" class="voice-recording-studio hidden" style="width: 100%;">
+                        <div class="voice-rec-indicator">
+                            <span class="rec-dot"></span>
+                            <span class="rec-label">REC</span>
+                            <span id="voice-record-timer" class="rec-timer">00:00</span>
+                        </div>
+                        <div class="voice-rec-waveform-live" id="voice-rec-live-bars"></div>
+                        <div class="voice-rec-actions">
+                            <button type="button" class="btn-rec-cancel" onclick="cancelVoiceNoteRecording()" title="Discard Voice Note">✕ Cancel</button>
+                            <button type="button" class="btn-rec-send" onclick="finishVoiceNoteRecording()" title="Send Voice Note">➤ Send</button>
+                        </div>
+                    </div>
                 </footer>
             </main>
         </div>

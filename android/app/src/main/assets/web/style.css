@@ -634,6 +634,203 @@ input:focus { border-color: var(--accent-blue); }
 
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
+/* Voice Note Studio & Playable Bubble Styles */
+.voice-recording-studio {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 2px 4px;
+    gap: 10px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.voice-rec-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.rec-dot {
+    width: 9px;
+    height: 9px;
+    background-color: var(--accent-red);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-red);
+    animation: recPulse 1s infinite alternate;
+}
+
+@keyframes recPulse {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.3; transform: scale(0.8); }
+}
+
+.rec-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent-red);
+    letter-spacing: 0.5px;
+}
+
+.rec-timer {
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-white);
+}
+
+.voice-rec-waveform-live {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 22px;
+    flex: 1;
+    justify-content: center;
+    padding: 0 8px;
+    overflow: hidden;
+}
+
+.live-vu-bar {
+    width: 3px;
+    height: 6px;
+    background: var(--accent-purple);
+    border-radius: 2px;
+    transition: height 0.08s ease-out;
+}
+
+.voice-rec-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-rec-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f85149;
+    border: 1px solid rgba(248, 81, 73, 0.3);
+    border-radius: 18px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-rec-cancel:hover {
+    background: rgba(248, 81, 73, 0.2);
+}
+
+.btn-rec-send {
+    background: var(--accent-green);
+    color: #0c101a;
+    border: none;
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(46, 160, 67, 0.4);
+    transition: all 0.2s;
+}
+
+.btn-rec-send:hover {
+    background: #3fb950;
+}
+
+/* Voice Note Playable Audio Player */
+.voice-note-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 190px;
+    max-width: 280px;
+    padding: 4px 2px;
+}
+
+.voice-play-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 10px rgba(163, 113, 247, 0.4);
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.voice-play-btn:active {
+    transform: scale(0.92);
+}
+
+.voice-player-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.voice-waveform-wrap {
+    position: relative;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.voice-waveform-bars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 100%;
+    width: 100%;
+}
+
+.waveform-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    transition: height 0.15s ease, background-color 0.1s ease;
+}
+
+.msg-row.out .waveform-bar {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.waveform-bar.played {
+    background: var(--accent-green) !important;
+}
+
+.voice-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.voice-duration {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.voice-badge {
+    font-size: 8px;
+    padding: 1px 4px;
+    background: rgba(46, 160, 67, 0.2);
+    color: var(--accent-green);
+    border-radius: 4px;
+    font-weight: 700;
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed;
